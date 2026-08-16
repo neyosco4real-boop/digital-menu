@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://foikiiarpvflmfdamlcz.supabase.co';
-const SUPABASE_ANON_KEY =
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  'https://foikiiarpvflmfdamlcz.supabase.co';
+
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng';
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 interface Category {
   id: string;
   name: string;
