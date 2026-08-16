@@ -8,40 +8,42 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng'
 );
 
-interface MenuItem {
-  id: string;
-  title: string;
-  description: string | null;
-  base_price: number;
-  categories: { name: string; section: string } | null;
-}
-
 export default function MenuPage() {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Restaurant');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchMenu() {
+    async function fetchMenuData() {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('menu_items')
-        .select('id, title, description, base_price, categories(name, section)');
+      setFetchError(null);
 
-      if (error) {
-        console.error('Fetch error:', error);
-      } else if (data) {
-        setMenuItems(data as unknown as MenuItem[]);
+      // Fetch categories and items separately to eliminate relation join caching bugs
+      const [catRes, itemRes] = await Promise.all([
+        supabase.from('categories').select('*'),
+        supabase.from('menu_items').select('*'),
+      ]);
+
+      if (catRes.error || itemRes.error) {
+        setFetchError(catRes.error?.message || itemRes.error?.message || 'Database error');
+      } else {
+        setCategories(catRes.data || []);
+        setMenuItems(itemRes.data || []);
       }
       setLoading(false);
     }
-    fetchMenu();
+    fetchMenuData();
   }, []);
 
+  // Map category ID to section name
+  const categoryMap = new Map(categories.map((c) => [c.id, c.section]));
+
   const filteredItems = menuItems.filter((item) => {
-    const itemSection = item.categories?.section || 'Restaurant';
-    const matchesSection = itemSection.toLowerCase() === activeTab.toLowerCase();
+    const section = categoryMap.get(item.category_id) || 'Restaurant';
+    const matchesSection = section.toLowerCase() === activeTab.toLowerCase();
     const matchesSearch =
       item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -54,7 +56,7 @@ export default function MenuPage() {
       <h1 className="text-2xl font-bold text-center mb-1 text-gray-900">Digital Menu</h1>
       <p className="text-sm text-gray-500 text-center mb-4">Select a section or search below</p>
 
-      {/* Search Input */}
+      {/* Search Bar */}
       <div className="mb-4">
         <input
           type="text"
@@ -65,7 +67,7 @@ export default function MenuPage() {
         />
       </div>
 
-      {/* Tabs */}
+      {/* Section Tabs */}
       <div className="flex justify-around mb-6 bg-gray-200 p-1 rounded-xl">
         {['Restaurant', 'Bar', 'Hotel'].map((tab) => (
           <button
@@ -82,11 +84,19 @@ export default function MenuPage() {
         ))}
       </div>
 
-      {/* Items Display */}
+      {/* Items List */}
       {loading ? (
         <p className="text-center text-gray-500 my-8">Loading menu...</p>
+      ) : fetchError ? (
+        <div className="p-4 bg-red-50 text-red-700 rounded-xl text-center text-sm">
+          <p className="font-bold">Error fetching database:</p>
+          <p>{fetchError}</p>
+        </div>
       ) : filteredItems.length === 0 ? (
-        <p className="text-center text-gray-400 my-8">No items found in this section.</p>
+        <div className="text-center my-8">
+          <p className="text-gray-400">No items found in this section.</p>
+          <p className="text-xs text-gray-400 mt-2">Total items in DB: {menuItems.length}</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {filteredItems.map((item) => (
