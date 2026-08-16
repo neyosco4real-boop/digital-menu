@@ -1,20 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import supabase from './lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-interface Category {
-  id: string;
-  name: string;
-  section: string;
-}
-
-interface ItemVariant {
-  id: string;
-  item_id: string;
-  variant_label: string;
-  price: number;
-}
+// Hardcoded direct Supabase client to guarantee connection
+const supabase = createClient(
+  'https://foikiiarpvflmfdamlcz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng'
+);
 
 interface MenuItem {
   id: string;
@@ -22,52 +15,34 @@ interface MenuItem {
   description: string | null;
   base_price: number;
   category_id: string;
-  categories?: { section: string } | { section: string }[];
-  item_variants?: ItemVariant[];
+  categories?: { section: string };
 }
 
 export default function MenuPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Restaurant');
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function fetchData() {
+    async function loadData() {
       setLoading(true);
-
-      // 1. Fetch categories
-      const { data: catData, error: catError } = await supabase
-        .from('categories')
-        .select('*');
-      
-      console.log('Fetched categories:', catData);
-      if (catError) console.log('Category error:', catError);
-      if (catData) setCategories(catData);
-
-      // 2. Fetch menu items with joined categories section & variants
-      const { data: itemData, error: itemError } = await supabase
+      const { data, error } = await supabase
         .from('menu_items')
-        .select('*, categories!inner(section), item_variants(*)');
+        .select('*, categories(section)');
 
-      console.log('Fetched items:', itemData);
-      console.log('Fetch error:', itemError);
-
-      if (itemData) setMenuItems(itemData as unknown as MenuItem[]);
-
+      if (error) {
+        console.error('Supabase Query Error:', error);
+      } else if (data) {
+        setMenuItems(data as MenuItem[]);
+      }
       setLoading(false);
     }
-
-    fetchData();
+    loadData();
   }, []);
 
-  // Filter items matching activeTab (handles single object or array return, plus case-insensitivity)
   const filteredItems = menuItems.filter((item) => {
-    const rawSection = Array.isArray(item.categories)
-      ? item.categories[0]?.section
-      : item.categories?.section;
-
-    return rawSection?.toLowerCase() === activeTab.toLowerCase();
+    const section = item.categories?.section || '';
+    return section.toLowerCase() === activeTab.toLowerCase();
   });
 
   return (
@@ -77,7 +52,7 @@ export default function MenuPage() {
         Select a section to view menu
       </p>
 
-      {/* Category Tabs */}
+      {/* Tabs */}
       <div className="flex justify-around mb-6 bg-gray-200 p-1 rounded-xl">
         {['Restaurant', 'Bar', 'Hotel'].map((tab) => (
           <button
@@ -94,7 +69,7 @@ export default function MenuPage() {
         ))}
       </div>
 
-      {/* Menu Item Display */}
+      {/* Item List */}
       {loading ? (
         <p className="text-center text-gray-500 my-8">Loading menu...</p>
       ) : filteredItems.length === 0 ? (
@@ -111,7 +86,7 @@ export default function MenuPage() {
               <div className="flex justify-between items-start">
                 <h3 className="font-bold text-gray-900 text-lg">{item.title}</h3>
                 <span className="font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded-md text-sm">
-                  ₦{item.base_price.toLocaleString()}
+                  ₦{item.base_price?.toLocaleString()}
                 </span>
               </div>
               {item.description && (
