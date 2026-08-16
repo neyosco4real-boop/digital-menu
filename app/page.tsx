@@ -13,8 +13,7 @@ interface MenuItem {
   title: string;
   description: string | null;
   base_price: number;
-  category_id: string | null;
-  categories?: { section: string; name: string } | null;
+  categories: { name: string; section: string } | null;
 }
 
 export default function MenuPage() {
@@ -28,12 +27,12 @@ export default function MenuPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('menu_items')
-        .select('*, categories(*)');
+        .select('id, title, description, base_price, categories(name, section)');
 
       if (error) {
-        console.error('Supabase error:', error);
-      } else {
-        setMenuItems((data as MenuItem[]) || []);
+        console.error('Fetch error:', error);
+      } else if (data) {
+        setMenuItems(data as unknown as MenuItem[]);
       }
       setLoading(false);
     }
@@ -41,10 +40,8 @@ export default function MenuPage() {
   }, []);
 
   const filteredItems = menuItems.filter((item) => {
-    // Default unassigned items to 'Restaurant' tab so everything displays
     const itemSection = item.categories?.section || 'Restaurant';
     const matchesSection = itemSection.toLowerCase() === activeTab.toLowerCase();
-    
     const matchesSearch =
       item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -64,11 +61,11 @@ export default function MenuPage() {
           placeholder="Search menu items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-sm bg-white"
+          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-sm bg-white text-gray-900"
         />
       </div>
 
-      {/* Section Filter Tabs */}
+      {/* Tabs */}
       <div className="flex justify-around mb-6 bg-gray-200 p-1 rounded-xl">
         {['Restaurant', 'Bar', 'Hotel'].map((tab) => (
           <button
@@ -85,7 +82,7 @@ export default function MenuPage() {
         ))}
       </div>
 
-      {/* Item Rendering */}
+      {/* Items Display */}
       {loading ? (
         <p className="text-center text-gray-500 my-8">Loading menu...</p>
       ) : filteredItems.length === 0 ? (
@@ -97,7 +94,7 @@ export default function MenuPage() {
               <div className="flex justify-between items-start">
                 <h3 className="font-bold text-gray-900 text-base">{item.title}</h3>
                 <span className="font-semibold text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md text-sm">
-                  ₦{item.base_price ? item.base_price.toLocaleString() : '0'}
+                  ₦{Number(item.base_price).toLocaleString()}
                 </span>
               </div>
               {item.description && (
