@@ -8,112 +8,44 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng'
 );
 
-interface MenuItem {
-  id: string;
-  title: string;
-  description: string | null;
-  base_price: number;
-  category_id: string;
-  categories?: { name: string; section: string };
-}
-
 export default function MenuPage() {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('Restaurant');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      
-      // Fetch menu items along with category metadata
-      const { data, error } = await supabase
-        .from('menu_items')
-        .select('*, categories(*)');
-
-      if (error) {
-        console.error('Supabase error:', error);
-      } else if (data) {
-        setMenuItems(data as MenuItem[]);
-      }
+    async function fetchAll() {
+      const { data, error } = await supabase.from('menu_items').select('*');
+      if (error) console.error(error);
+      setItems(data || []);
       setLoading(false);
     }
-    loadData();
+    fetchAll();
   }, []);
 
-  // Filter by active tab section and search query
-  const filteredItems = menuItems.filter((item) => {
-    const itemSection = item.categories?.section || '';
-    const matchesSection =
-      !itemSection || itemSection.toLowerCase() === activeTab.toLowerCase();
-
-    const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.description &&
-        item.description.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesSection && matchesSearch;
-  });
-
   return (
-    <main className="min-h-screen bg-gray-50 p-4 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold text-center mb-1">Digital Menu</h1>
-      <p className="text-sm text-gray-500 text-center mb-4">
-        Select a section or search below
-      </p>
-
-      {/* Search Bar */}
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search menu items..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-black text-sm"
-        />
-      </div>
-
-      {/* Section Tabs */}
-      <div className="flex justify-around mb-6 bg-gray-200 p-1 rounded-xl">
-        {['Restaurant', 'Bar', 'Hotel'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`w-full py-2 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === tab
-                ? 'bg-white text-black shadow-sm'
-                : 'text-gray-500 hover:text-black'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {/* Items List */}
+    <main className="p-6 max-w-md mx-auto font-sans">
+      <h1 className="text-2xl font-bold mb-4 text-center">Digital Menu</h1>
       {loading ? (
-        <p className="text-center text-gray-500 my-8">Loading menu...</p>
-      ) : filteredItems.length === 0 ? (
-        <p className="text-center text-gray-400 my-8">
-          No items available in this section.
-        </p>
+        <p className="text-center text-gray-500">Loading items...</p>
+      ) : items.length === 0 ? (
+        <div className="p-4 bg-red-50 text-red-700 rounded-xl text-center">
+          <p className="font-bold">0 items found in database.</p>
+          <p className="text-sm mt-1">
+            Your Supabase <code className="bg-red-100 px-1">menu_items</code> table is currently empty.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="p-4 bg-white rounded-xl shadow-sm border border-gray-100"
-            >
-              <div className="flex justify-between items-start">
-                <h3 className="font-bold text-gray-900 text-lg">{item.title}</h3>
-                <span className="font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded-md text-sm">
-                  ₦{item.base_price?.toLocaleString()}
-                </span>
+        <div className="space-y-3">
+          <p className="text-sm text-green-600 font-semibold text-center">
+            Successfully loaded {items.length} items from Supabase:
+          </p>
+          {items.map((item, idx) => (
+            <div key={item.id || idx} className="p-4 bg-white rounded-xl shadow border border-gray-100">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold text-gray-900">{item.title || item.name || 'Unnamed Item'}</h3>
+                <span className="font-semibold text-black">₦{item.base_price || item.price || 0}</span>
               </div>
-              {item.description && (
-                <p className="text-sm text-gray-500 mt-2">{item.description}</p>
-              )}
+              {item.description && <p className="text-sm text-gray-500 mt-1">{item.description}</p>}
             </div>
           ))}
         </div>
