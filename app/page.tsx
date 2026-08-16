@@ -3,14 +3,29 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  'https://foikiiarpvflmfdamlcz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng'
-);
+const SUPABASE_URL = 'https://foikiiarpvflmfdamlcz.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+interface Category {
+  id: string;
+  name: string;
+  section: string;
+}
+
+interface MenuItem {
+  id: string;
+  title: string;
+  description: string | null;
+  base_price: number;
+  category_id: string | null;
+}
 
 export default function MenuPage() {
-  const [menuItems, setMenuItems] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Restaurant');
   const [loading, setLoading] = useState(true);
@@ -21,28 +36,29 @@ export default function MenuPage() {
       setLoading(true);
       setFetchError(null);
 
-      // Fetch categories and items separately to eliminate relation join caching bugs
       const [catRes, itemRes] = await Promise.all([
         supabase.from('categories').select('*'),
         supabase.from('menu_items').select('*'),
       ]);
 
       if (catRes.error || itemRes.error) {
-        setFetchError(catRes.error?.message || itemRes.error?.message || 'Database error');
+        setFetchError(
+          catRes.error?.message || itemRes.error?.message || 'Failed to fetch database'
+        );
       } else {
-        setCategories(catRes.data || []);
-        setMenuItems(itemRes.data || []);
+        setCategories((catRes.data as Category[]) || []);
+        setMenuItems((itemRes.data as MenuItem[]) || []);
       }
       setLoading(false);
     }
+
     fetchMenuData();
   }, []);
 
-  // Map category ID to section name
   const categoryMap = new Map(categories.map((c) => [c.id, c.section]));
 
   const filteredItems = menuItems.filter((item) => {
-    const section = categoryMap.get(item.category_id) || 'Restaurant';
+    const section = (item.category_id ? categoryMap.get(item.category_id) : 'Restaurant') || 'Restaurant';
     const matchesSection = section.toLowerCase() === activeTab.toLowerCase();
     const matchesSearch =
       item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -84,7 +100,7 @@ export default function MenuPage() {
         ))}
       </div>
 
-      {/* Items List */}
+      {/* Items Display */}
       {loading ? (
         <p className="text-center text-gray-500 my-8">Loading menu...</p>
       ) : fetchError ? (
@@ -95,7 +111,7 @@ export default function MenuPage() {
       ) : filteredItems.length === 0 ? (
         <div className="text-center my-8">
           <p className="text-gray-400">No items found in this section.</p>
-          <p className="text-xs text-gray-400 mt-2">Total items in DB: {menuItems.length}</p>
+          <p className="text-xs text-gray-400 mt-2">Total items in database: {menuItems.length}</p>
         </div>
       ) : (
         <div className="space-y-3">
