@@ -116,6 +116,15 @@ export default function MenuPage() {
     return matchesSection && matchesSearch;
   });
 
+  // Returns section icon based on section name
+  const getSectionIcon = (sectionName?: string | null) => {
+    const section = sectionName?.toLowerCase() || '';
+    if (section === 'bar') return '🍹';
+    if (section === 'hotel') return '🏨';
+    if (section === 'restaurant') return '🍽️';
+    return '✨';
+  };
+
   // Cart Functions
   const addToCart = (
     itemId: string,
@@ -297,15 +306,19 @@ export default function MenuPage() {
         ) : (
           <div className="space-y-3.5">
             {filteredItems.map((item) => {
+              const section = item.category_id
+                ? categoryMap.get(item.category_id)
+                : null;
               const itemVariants = variantsByItemId.get(item.id) || [];
+              const sectionIcon = getSectionIcon(section);
 
               return (
                 <div
                   key={item.id}
                   className="group p-4 bg-zinc-900/80 hover:bg-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800/80 hover:border-amber-500/40 transition-all duration-200 shadow-lg flex gap-3.5 items-center"
                 >
-                  {/* Optional Dish Image Thumbnail */}
-                  <div className="w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-xl">
+                  {/* Dynamic Thumbnail matching Section Icon */}
+                  <div className="w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-2xl shadow-inner">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
@@ -313,7 +326,7 @@ export default function MenuPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span>🍽️</span>
+                      <span>{sectionIcon}</span>
                     )}
                   </div>
 
