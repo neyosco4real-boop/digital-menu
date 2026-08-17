@@ -386,7 +386,7 @@ export default function MenuPage() {
                                     variant.variant_label
                                   )
                                 }
-                                className="bg-zinc-800 hover:bg-amber-500 hover:text-zinc-950 text-amber-400 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
+                                className="bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-md shadow-amber-500/10 active:scale-95"
                               >
                                 + Add
                               </button>
