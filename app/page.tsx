@@ -73,8 +73,9 @@ export default function MenuPage() {
   }, []);
 
   const categoryMap = new Map(categories.map((c) => [c.id, c.section]));
+  const itemMap = new Map(menuItems.map((item) => [item.id, item]));
 
-  // Group item_variants by item_id
+  // Group variants by item_id
   const variantsByItemId = new Map<string, ItemVariant[]>();
   variants.forEach((v) => {
     const existing = variantsByItemId.get(v.item_id) || [];
@@ -82,10 +83,10 @@ export default function MenuPage() {
     variantsByItemId.set(v.item_id, existing);
   });
 
+  // Filter items matching tab and search query
   const filteredItems = menuItems.filter((item) => {
     const section =
-      (item.category_id ? categoryMap.get(item.category_id) : 'Restaurant') ||
-      'Restaurant';
+      (item.category_id ? categoryMap.get(item.category_id) : 'Bar') || 'Bar';
     const matchesSection =
       activeTab === 'All' ||
       section.toLowerCase() === activeTab.toLowerCase();
@@ -103,6 +104,9 @@ export default function MenuPage() {
     return matchesSection && matchesSearch;
   });
 
+  // Identify variants whose item_id is not in menu_items
+  const orphanVariants = variants.filter((v) => !itemMap.has(v.item_id));
+
   return (
     <main className="min-h-screen bg-gray-50 p-4 max-w-md mx-auto font-sans">
       <h1 className="text-2xl font-bold text-center mb-1 text-gray-900">
@@ -112,7 +116,7 @@ export default function MenuPage() {
         Select a section or search below
       </p>
 
-      {/* Search Bar */}
+      {/* Search Input */}
       <div className="mb-4">
         <input
           type="text"
@@ -123,7 +127,7 @@ export default function MenuPage() {
         />
       </div>
 
-      {/* Section Tabs */}
+      {/* Navigation Tabs */}
       <div className="flex justify-around mb-6 bg-gray-200 p-1 rounded-xl">
         {['All', 'Restaurant', 'Bar', 'Hotel'].map((tab) => (
           <button
@@ -140,20 +144,20 @@ export default function MenuPage() {
         ))}
       </div>
 
-      {/* Items & Variants Display */}
+      {/* Status Indicators */}
       {loading ? (
         <p className="text-center text-gray-500 my-8">Loading menu...</p>
       ) : fetchError ? (
         <div className="p-4 bg-red-50 text-red-700 rounded-xl text-center text-sm">
-          <p className="font-bold">Error fetching database:</p>
+          <p className="font-bold">Database Error:</p>
           <p>{fetchError}</p>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="text-center my-8">
-          <p className="text-gray-400">No items found.</p>
+          <p className="text-xs mt-2 text-red-500">
+            Check Row Level Security (RLS) policies on menu_items table in Supabase.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Main Menu Items */}
           {filteredItems.map((item) => {
             const section = item.category_id
               ? categoryMap.get(item.category_id)
@@ -177,7 +181,6 @@ export default function MenuPage() {
                     )}
                   </div>
 
-                  {/* Fallback base price if no variants exist */}
                   {itemVariants.length === 0 && item.base_price !== null && (
                     <span className="font-semibold text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md text-sm whitespace-nowrap">
                       ₦{Number(item.base_price).toLocaleString()}
@@ -191,7 +194,6 @@ export default function MenuPage() {
                   </p>
                 )}
 
-                {/* Display item variants (sizes/prices) */}
                 {itemVariants.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
                     {itemVariants.map((variant) => (
@@ -212,6 +214,29 @@ export default function MenuPage() {
               </div>
             );
           })}
+
+          {/* Standalone Variants Fallback */}
+          {(activeTab === 'All' || activeTab === 'Bar') &&
+            orphanVariants.map((variant) => (
+              <div
+                key={variant.id}
+                className="p-4 bg-white rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"
+              >
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">
+                    Drink Variant ({variant.variant_label})
+                  </h3>
+                  {activeTab === 'All' && (
+                    <span className="inline-block text-[10px] font-semibold tracking-wide uppercase bg-gray-100 text-gray-600 px-2 py-0.5 rounded mt-1">
+                      BAR
+                    </span>
+                  )}
+                </div>
+                <span className="font-bold text-gray-900 bg-gray-50 px-2.5 py-1 rounded border border-gray-200 text-xs">
+                  ₦{Number(variant.price).toLocaleString()}
+                </span>
+              </div>
+            ))}
         </div>
       )}
     </main>
