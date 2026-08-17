@@ -13,8 +13,7 @@ const supabaseAnonKey =
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// WhatsApp Order Phone Number (Replace with your venue's WhatsApp number)
-const WHATSAPP_PHONE = '2348000000000';
+const WHATSAPP_PHONE = '2348000000000'; // Replace with your WhatsApp number
 
 interface Category {
   id: string;
@@ -35,14 +34,27 @@ interface MenuItem {
   description: string | null;
   base_price: number | null;
   category_id: string | null;
+  image_url?: string | null;
+}
+
+interface CartItem {
+  id: string;
+  title: string;
+  variantLabel?: string;
+  price: number;
+  quantity: number;
 }
 
 export default function MenuPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [variants, setVariants] = useState<ItemVariant[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('All');
+  const [tableNumber, setTableNumber] = useState('1');
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -104,23 +116,74 @@ export default function MenuPage() {
     return matchesSection && matchesSearch;
   });
 
-  const handleWhatsAppOrder = (itemTitle: string, size?: string, price?: number) => {
-    const details = size ? `${itemTitle} (${size})` : itemTitle;
-    const priceText = price ? ` for ₦${Number(price).toLocaleString()}` : '';
-    const message = encodeURIComponent(`Hello! I would like to order: ${details}${priceText}.`);
-    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${message}`, '_blank');
+  // Cart Functions
+  const addToCart = (
+    itemId: string,
+    title: string,
+    price: number,
+    variantLabel?: string
+  ) => {
+    const cartId = variantLabel ? `${itemId}-${variantLabel}` : itemId;
+    setCart((prevCart) => {
+      const existing = prevCart.find((c) => c.id === cartId);
+      if (existing) {
+        return prevCart.map((c) =>
+          c.id === cartId ? { ...c, quantity: c.quantity + 1 } : c
+        );
+      }
+      return [
+        ...prevCart,
+        { id: cartId, title, variantLabel, price, quantity: 1 },
+      ];
+    });
   };
 
-  const getSectionBadge = (sectionName: string) => {
-    const section = sectionName.toLowerCase();
-    if (section === 'bar')
-      return { bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: '🍺' };
-    if (section === 'restaurant')
-      return { bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20', icon: '🍽️' };
-    if (section === 'hotel')
-      return { bg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', icon: '🏨' };
-    return { bg: 'bg-zinc-800 text-zinc-300 border-zinc-700', icon: '✨' };
+  const updateQuantity = (cartId: string, delta: number) => {
+    setCart((prevCart) =>
+      prevCart
+        .map((item) => {
+          if (item.id === cartId) {
+            const newQty = item.quantity + delta;
+            return newQty > 0 ? { ...item, quantity: newQty } : null;
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[]
+    );
   };
+
+  const cartTotal = cart.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleWhatsAppCheckout = () => {
+    if (cart.length === 0) return;
+
+    let text = `*NEW ORDER - TABLE ${tableNumber}*\n------------------------------\n`;
+    cart.forEach((item, index) => {
+      const sizeStr = item.variantLabel ? ` (${item.variantLabel})` : '';
+      text += `${index + 1}. *${item.title}${sizeStr}* x${item.quantity} - ₦${(
+        item.price * item.quantity
+      ).toLocaleString()}\n`;
+    });
+    text += `------------------------------\n*TOTAL:* ₦${cartTotal.toLocaleString()}\n\nPlease confirm my order!`;
+
+    window.open(
+      `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`,
+      '_blank'
+    );
+  };
+
+  const currentUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}?table=${tableNumber}`
+      : '';
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+    currentUrl
+  )}&color=d97706&bgcolor=18181b`;
 
   const tabs = [
     { name: 'All', icon: '✨' },
@@ -130,14 +193,12 @@ export default function MenuPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased pb-20">
-      {/* PK-Menu Hero Branding Header */}
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased pb-28">
+      {/* Hero Header */}
       <div className="relative bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-zinc-950 border-b border-zinc-800/80 pt-8 pb-6 px-4 text-center overflow-hidden">
-        {/* Glow backdrop behind header */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 max-w-md mx-auto">
-          {/* Logo Badge */}
           <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20">
             <div className="w-full h-full bg-zinc-950 rounded-[14px] flex items-center justify-center font-extrabold text-amber-400 text-xl tracking-wider">
               DM
@@ -151,13 +212,25 @@ export default function MenuPage() {
             Food • Lounge • Bar • Executive Suites
           </p>
 
-          <div className="flex items-center justify-center gap-2 mt-3 text-[11px]">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Open Now
-            </span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-zinc-400">Fast Table Service</span>
+          {/* Table Selector & QR Generator Trigger */}
+          <div className="flex items-center justify-center gap-2 mt-4 text-xs">
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-xl">
+              <span className="text-zinc-400">Table:</span>
+              <input
+                type="text"
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                className="w-8 bg-transparent text-amber-400 font-bold text-center focus:outline-none"
+              />
+            </div>
+
+            <button
+              onClick={() => setIsQRModalOpen(true)}
+              className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all"
+            >
+              <span>📷</span>
+              <span>QR Code</span>
+            </button>
           </div>
         </div>
       </div>
@@ -185,8 +258,8 @@ export default function MenuPage() {
           )}
         </div>
 
-        {/* Sticky Horizontal Icon Tabs */}
-        <div className="sticky top-2 z-30 mb-5 bg-zinc-950/80 backdrop-blur-xl p-1.5 rounded-2xl border border-zinc-800/80 shadow-2xl flex gap-1.5 overflow-x-auto no-scrollbar">
+        {/* Sticky Icon Tabs */}
+        <div className="sticky top-2 z-30 mb-5 bg-zinc-950/80 backdrop-blur-xl p-1.5 rounded-2xl border border-zinc-800/80 shadow-2xl flex gap-1.5 overflow-x-auto">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.name;
             return (
@@ -224,92 +297,92 @@ export default function MenuPage() {
         ) : (
           <div className="space-y-3.5">
             {filteredItems.map((item) => {
-              const section = item.category_id
-                ? categoryMap.get(item.category_id)
-                : null;
               const itemVariants = variantsByItemId.get(item.id) || [];
-              const badge = section ? getSectionBadge(section) : null;
 
               return (
                 <div
                   key={item.id}
-                  className="group relative p-4 bg-zinc-900/80 hover:bg-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800/80 hover:border-amber-500/40 transition-all duration-200 shadow-lg"
+                  className="group p-4 bg-zinc-900/80 hover:bg-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800/80 hover:border-amber-500/40 transition-all duration-200 shadow-lg flex gap-3.5 items-center"
                 >
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="space-y-1">
-                      <h3 className="font-bold text-white text-base group-hover:text-amber-400 transition-colors">
-                        {item.title}
-                      </h3>
+                  {/* Optional Dish Image Thumbnail */}
+                  <div className="w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-xl">
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>🍽️</span>
+                    )}
+                  </div>
 
-                      {badge && activeTab === 'All' && (
-                        <span
-                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-md border ${badge.bg}`}
-                        >
-                          <span>{badge.icon}</span>
-                          <span>{section}</span>
-                        </span>
-                      )}
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors truncate">
+                      {item.title}
+                    </h3>
 
-                    {/* Single Base Price */}
+                    {item.description && (
+                      <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                    )}
+
+                    {/* Single Base Price Button */}
                     {itemVariants.length === 0 && item.base_price !== null && (
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-xl text-xs whitespace-nowrap shadow-sm">
+                      <div className="flex items-center justify-between mt-2.5">
+                        <span className="font-extrabold text-amber-400 text-xs">
                           ₦{Number(item.base_price).toLocaleString()}
                         </span>
                         <button
                           onClick={() =>
-                            handleWhatsAppOrder(item.title, undefined, item.base_price!)
+                            addToCart(
+                              item.id,
+                              item.title,
+                              Number(item.base_price)
+                            )
                           }
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 p-1.5 rounded-xl text-xs transition-all"
-                          title="Order on WhatsApp"
+                          className="bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-md shadow-amber-500/10 active:scale-95"
                         >
-                          💬
+                          + Add
                         </button>
                       </div>
                     )}
-                  </div>
 
-                  {/* Description */}
-                  {item.description && (
-                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
-                      {item.description}
-                    </p>
-                  )}
-
-                  {/* Item Variants List */}
-                  {itemVariants.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-zinc-800/80 space-y-2">
-                      {itemVariants.map((variant) => (
-                        <div
-                          key={variant.id}
-                          className="flex justify-between items-center text-xs p-2 rounded-xl bg-zinc-950/50 hover:bg-zinc-950 border border-zinc-800/50 transition-colors"
-                        >
-                          <span className="text-zinc-300 font-medium">
-                            {variant.variant_label}
-                          </span>
-
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-lg text-[11px]">
-                              ₦{Number(variant.price).toLocaleString()}
+                    {/* Item Variants List */}
+                    {itemVariants.length > 0 && (
+                      <div className="mt-2.5 pt-2 border-t border-zinc-800/80 space-y-1.5">
+                        {itemVariants.map((variant) => (
+                          <div
+                            key={variant.id}
+                            className="flex justify-between items-center text-xs"
+                          >
+                            <span className="text-zinc-400 text-[11px]">
+                              {variant.variant_label}
                             </span>
-                            <button
-                              onClick={() =>
-                                handleWhatsAppOrder(
-                                  item.title,
-                                  variant.variant_label,
-                                  variant.price
-                                )
-                              }
-                              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
-                            >
-                              + Order
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-amber-400 text-[11px]">
+                                ₦{Number(variant.price).toLocaleString()}
+                              </span>
+                              <button
+                                onClick={() =>
+                                  addToCart(
+                                    item.id,
+                                    item.title,
+                                    Number(variant.price),
+                                    variant.variant_label
+                                  )
+                                }
+                                className="bg-zinc-800 hover:bg-amber-500 hover:text-zinc-950 text-amber-400 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
+                              >
+                                + Add
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -317,22 +390,138 @@ export default function MenuPage() {
         )}
       </div>
 
-      {/* Floating Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/80 py-2.5 px-4">
-        <div className="max-w-md mx-auto flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            <span className="text-zinc-400 font-medium">Need Assistance?</span>
-          </div>
+      {/* Floating Bottom Cart Trigger */}
+      {cartItemCount > 0 && (
+        <div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto">
           <button
-            onClick={() => handleWhatsAppOrder('General Inquiry')}
-            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-xs"
+            onClick={() => setIsCartOpen(true)}
+            className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-zinc-950 font-extrabold p-3.5 rounded-2xl shadow-2xl shadow-amber-500/25 flex items-center justify-between transition-all active:scale-98"
           >
-            <span>💬</span>
-            <span>WhatsApp Order</span>
+            <div className="flex items-center gap-2.5">
+              <span className="bg-zinc-950 text-amber-400 text-xs px-2.5 py-1 rounded-xl font-black">
+                {cartItemCount}
+              </span>
+              <span className="text-xs tracking-wide uppercase">
+                View Order
+              </span>
+            </div>
+            <span className="text-sm">₦{cartTotal.toLocaleString()} →</span>
           </button>
         </div>
-      </div>
+      )}
+
+      {/* Slide-Up Cart Drawer */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end justify-center">
+          <div className="bg-zinc-900 border-t border-zinc-800 w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+              <div>
+                <h2 className="font-extrabold text-white text-base">
+                  Your Order (Table {tableNumber})
+                </h2>
+                <p className="text-[11px] text-zinc-400">
+                  Review items before sending to WhatsApp
+                </p>
+              </div>
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="text-zinc-400 hover:text-white bg-zinc-800 p-1.5 rounded-full text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Cart Items Scroll Container */}
+            <div className="overflow-y-auto space-y-3 flex-1 pr-1">
+              {cart.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between bg-zinc-950 p-3 rounded-2xl border border-zinc-800/80"
+                >
+                  <div>
+                    <h4 className="text-xs font-bold text-white">
+                      {item.title}
+                    </h4>
+                    {item.variantLabel && (
+                      <span className="text-[10px] text-zinc-400">
+                        {item.variantLabel}
+                      </span>
+                    )}
+                    <p className="text-xs font-semibold text-amber-400 mt-0.5">
+                      ₦{(item.price * item.quantity).toLocaleString()}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+                    <button
+                      onClick={() => updateQuantity(item.id, -1)}
+                      className="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs flex items-center justify-center"
+                    >
+                      -
+                    </button>
+                    <span className="text-xs font-bold text-white px-1">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() => updateQuantity(item.id, 1)}
+                      className="w-6 h-6 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs flex items-center justify-center"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Total and Checkout */}
+            <div className="border-t border-zinc-800 pt-3 space-y-3">
+              <div className="flex justify-between items-center text-sm font-extrabold text-white">
+                <span>Total Amount</span>
+                <span className="text-amber-400 text-base">
+                  ₦{cartTotal.toLocaleString()}
+                </span>
+              </div>
+
+              <button
+                onClick={handleWhatsAppCheckout}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black py-3.5 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all"
+              >
+                <span>💬</span>
+                <span>Send Order to WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Table QR Code Generator Modal */}
+      {isQRModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 max-w-xs w-full rounded-3xl p-6 text-center space-y-4">
+            <h3 className="font-extrabold text-white text-base">
+              Table {tableNumber} QR Code
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Scan with phone camera to open this menu for Table {tableNumber}.
+            </p>
+
+            <div className="bg-zinc-950 p-4 rounded-2xl border border-zinc-800 inline-block">
+              <img
+                src={qrCodeUrl}
+                alt="Table QR Code"
+                className="w-48 h-48 mx-auto rounded-xl shadow-md"
+              />
+            </div>
+
+            <button
+              onClick={() => setIsQRModalOpen(false)}
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2.5 rounded-xl transition-all"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
