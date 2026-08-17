@@ -116,7 +116,6 @@ export default function MenuPage() {
     return matchesSection && matchesSearch;
   });
 
-  // Returns section icon based on section name
   const getSectionIcon = (sectionName?: string | null) => {
     const section = sectionName?.toLowerCase() || '';
     if (section === 'bar') return '🍹';
@@ -125,7 +124,6 @@ export default function MenuPage() {
     return '✨';
   };
 
-  // Cart Functions
   const addToCart = (
     itemId: string,
     title: string,
@@ -221,7 +219,6 @@ export default function MenuPage() {
             Food • Lounge • Bar • Executive Suites
           </p>
 
-          {/* Table Selector & QR Generator Trigger */}
           <div className="flex items-center justify-center gap-2 mt-4 text-xs">
             <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-xl">
               <span className="text-zinc-400">Table:</span>
@@ -317,7 +314,6 @@ export default function MenuPage() {
                   key={item.id}
                   className="group p-4 bg-zinc-900/80 hover:bg-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800/80 hover:border-amber-500/40 transition-all duration-200 shadow-lg flex gap-3.5 items-center"
                 >
-                  {/* Dynamic Thumbnail matching Section Icon */}
                   <div className="w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-2xl shadow-inner">
                     {item.image_url ? (
                       <img
@@ -341,10 +337,10 @@ export default function MenuPage() {
                       </p>
                     )}
 
-                    {/* Single Base Price Button */}
+                    {/* Single Base Price Item (Right-aligned price next to Add button) */}
                     {itemVariants.length === 0 && item.base_price !== null && (
-                      <div className="flex items-center justify-between mt-2.5">
-                        <span className="font-extrabold text-amber-400 text-xs">
+                      <div className="mt-2.5 pt-2 border-t border-zinc-800/80 flex justify-end items-center gap-2">
+                        <span className="font-bold text-amber-400 text-[11px]">
                           ₦{Number(item.base_price).toLocaleString()}
                         </span>
                         <button
@@ -444,7 +440,6 @@ export default function MenuPage() {
               </button>
             </div>
 
-            {/* Cart Items Scroll Container */}
             <div className="overflow-y-auto space-y-3 flex-1 pr-1">
               {cart.map((item) => (
                 <div
@@ -486,7 +481,6 @@ export default function MenuPage() {
               ))}
             </div>
 
-            {/* Total and Checkout */}
             <div className="border-t border-zinc-800 pt-3 space-y-3">
               <div className="flex justify-between items-center text-sm font-extrabold text-white">
                 <span>Total Amount</span>
