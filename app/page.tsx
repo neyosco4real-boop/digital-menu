@@ -13,6 +13,9 @@ const supabaseAnonKey =
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// WhatsApp Order Phone Number (Replace with your venue's WhatsApp number)
+const WHATSAPP_PHONE = '2348000000000';
+
 interface Category {
   id: string;
   name: string;
@@ -101,159 +104,235 @@ export default function MenuPage() {
     return matchesSection && matchesSearch;
   });
 
-  // Category badge accent color selector
-  const getBadgeStyle = (sectionName: string) => {
-    const section = sectionName.toLowerCase();
-    if (section === 'bar') {
-      return 'bg-amber-100 text-amber-800 border-amber-200/80';
-    }
-    if (section === 'restaurant') {
-      return 'bg-rose-100 text-rose-800 border-rose-200/80';
-    }
-    if (section === 'hotel') {
-      return 'bg-indigo-100 text-indigo-800 border-indigo-200/80';
-    }
-    return 'bg-gray-100 text-gray-700 border-gray-200';
+  const handleWhatsAppOrder = (itemTitle: string, size?: string, price?: number) => {
+    const details = size ? `${itemTitle} (${size})` : itemTitle;
+    const priceText = price ? ` for ₦${Number(price).toLocaleString()}` : '';
+    const message = encodeURIComponent(`Hello! I would like to order: ${details}${priceText}.`);
+    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${message}`, '_blank');
   };
 
+  const getSectionBadge = (sectionName: string) => {
+    const section = sectionName.toLowerCase();
+    if (section === 'bar')
+      return { bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: '🍺' };
+    if (section === 'restaurant')
+      return { bg: 'bg-rose-500/10 text-rose-400 border-rose-500/20', icon: '🍽️' };
+    if (section === 'hotel')
+      return { bg: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', icon: '🏨' };
+    return { bg: 'bg-zinc-800 text-zinc-300 border-zinc-700', icon: '✨' };
+  };
+
+  const tabs = [
+    { name: 'All', icon: '✨' },
+    { name: 'Restaurant', icon: '🍽️' },
+    { name: 'Bar', icon: '🍹' },
+    { name: 'Hotel', icon: '🏨' },
+  ];
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-gray-100 p-4 max-w-md mx-auto font-sans text-gray-800 antialiased">
-      {/* Header */}
-      <div className="text-center my-4">
-        <span className="inline-block px-3 py-1 text-[11px] font-extrabold tracking-widest uppercase rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20 mb-2 shadow-sm">
-          Welcome
-        </span>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          Digital Menu
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Explore our selections below
-        </p>
-      </div>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased pb-20">
+      {/* PK-Menu Hero Branding Header */}
+      <div className="relative bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-zinc-950 border-b border-zinc-800/80 pt-8 pb-6 px-4 text-center overflow-hidden">
+        {/* Glow backdrop behind header */}
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* Search Input */}
-      <div className="relative mb-5">
-        <input
-          type="text"
-          placeholder="Search items, drinks, or sizes..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-4 pr-10 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 text-sm bg-white/80 backdrop-blur-md shadow-sm transition-all duration-200 placeholder:text-slate-400"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold px-1.5 py-0.5 rounded-full bg-slate-100"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+        <div className="relative z-10 max-w-md mx-auto">
+          {/* Logo Badge */}
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20">
+            <div className="w-full h-full bg-zinc-950 rounded-[14px] flex items-center justify-center font-extrabold text-amber-400 text-xl tracking-wider">
+              DM
+            </div>
+          </div>
 
-      {/* Navigation Tabs */}
-      <div className="grid grid-cols-4 gap-1 mb-6 bg-slate-200/70 p-1.5 rounded-2xl backdrop-blur-sm shadow-inner">
-        {['All', 'Restaurant', 'Bar', 'Hotel'].map((tab) => {
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-2 text-xs font-bold rounded-xl transition-all duration-300 transform active:scale-95 ${
-                isActive
-                  ? 'bg-white text-slate-900 shadow-md scale-[1.02]'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {tab}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Loading State */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 space-y-3">
-          <div className="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs text-slate-400 font-medium">Fetching menu...</p>
-        </div>
-      ) : fetchError ? (
-        <div className="p-4 bg-rose-50 text-rose-700 rounded-2xl text-center text-sm border border-rose-100 shadow-sm">
-          <p className="font-bold">Unable to load menu</p>
-          <p className="text-xs mt-1 text-rose-500">{fetchError}</p>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="text-center py-12 bg-white/50 rounded-2xl border border-dashed border-slate-200">
-          <p className="text-sm font-semibold text-slate-400">
-            No items matched your search.
+          <h1 className="text-2xl font-black tracking-tight text-white">
+            LUXURY DIGITAL MENU
+          </h1>
+          <p className="text-xs text-zinc-400 mt-1">
+            Food • Lounge • Bar • Executive Suites
           </p>
+
+          <div className="flex items-center justify-center gap-2 mt-3 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Open Now
+            </span>
+            <span className="text-zinc-600">•</span>
+            <span className="text-zinc-400">Fast Table Service</span>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-3.5">
-          {filteredItems.map((item) => {
-            const section = item.category_id
-              ? categoryMap.get(item.category_id)
-              : null;
-            const itemVariants = variantsByItemId.get(item.id) || [];
+      </div>
 
+      <div className="max-w-md mx-auto px-4 mt-4">
+        {/* Search Bar */}
+        <div className="relative mb-4">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">
+            🔍
+          </span>
+          <input
+            type="text"
+            placeholder="Search drinks, dishes, sizes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-3 bg-zinc-900/80 border border-zinc-800 rounded-2xl focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 text-xs text-white placeholder-zinc-500 backdrop-blur-md transition-all shadow-inner"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs bg-zinc-800 px-1.5 py-0.5 rounded-full"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Sticky Horizontal Icon Tabs */}
+        <div className="sticky top-2 z-30 mb-5 bg-zinc-950/80 backdrop-blur-xl p-1.5 rounded-2xl border border-zinc-800/80 shadow-2xl flex gap-1.5 overflow-x-auto no-scrollbar">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.name;
             return (
-              <div
-                key={item.id}
-                className="p-4 bg-white/90 backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-md border border-slate-100 transition-all duration-200 hover:-translate-y-0.5"
+              <button
+                key={tab.name}
+                onClick={() => setActiveTab(tab.name)}
+                className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                  isActive
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/20 scale-[1.02]'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
               >
-                <div className="flex justify-between items-start gap-3">
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-base leading-snug">
-                      {item.title}
-                    </h3>
-                    {section && activeTab === 'All' && (
-                      <span
-                        className={`inline-block text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-full border mt-1.5 shadow-2xs ${getBadgeStyle(
-                          section
-                        )}`}
-                      >
-                        {section}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Single Base Price Badge */}
-                  {itemVariants.length === 0 && item.base_price !== null && (
-                    <span className="font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1 rounded-full text-xs whitespace-nowrap shadow-2xs">
-                      ₦{Number(item.base_price).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-
-                {/* Optional Item Description */}
-                {item.description && (
-                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                    {item.description}
-                  </p>
-                )}
-
-                {/* Variant List (Sizes & Prices) */}
-                {itemVariants.length > 0 && (
-                  <div className="mt-3.5 pt-3 border-t border-slate-100 space-y-2">
-                    {itemVariants.map((variant) => (
-                      <div
-                        key={variant.id}
-                        className="flex justify-between items-center text-xs p-1.5 rounded-lg hover:bg-slate-50/80 transition-colors duration-150"
-                      >
-                        <span className="text-slate-600 font-semibold">
-                          {variant.variant_label}
-                        </span>
-                        <span className="font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-0.5 rounded-full text-[11px] shadow-2xs">
-                          ₦{Number(variant.price).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                <span>{tab.icon}</span>
+                <span>{tab.name}</span>
+              </button>
             );
           })}
         </div>
-      )}
-    </main>
+
+        {/* Content Body */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-3">
+            <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-xs text-zinc-500 font-medium">Loading catalog...</p>
+          </div>
+        ) : fetchError ? (
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-center text-xs">
+            <p className="font-bold">Database Error</p>
+            <p className="mt-1">{fetchError}</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-16 bg-zinc-900/40 rounded-2xl border border-dashed border-zinc-800">
+            <p className="text-xs text-zinc-500">No menu items found.</p>
+          </div>
+        ) : (
+          <div className="space-y-3.5">
+            {filteredItems.map((item) => {
+              const section = item.category_id
+                ? categoryMap.get(item.category_id)
+                : null;
+              const itemVariants = variantsByItemId.get(item.id) || [];
+              const badge = section ? getSectionBadge(section) : null;
+
+              return (
+                <div
+                  key={item.id}
+                  className="group relative p-4 bg-zinc-900/80 hover:bg-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800/80 hover:border-amber-500/40 transition-all duration-200 shadow-lg"
+                >
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-white text-base group-hover:text-amber-400 transition-colors">
+                        {item.title}
+                      </h3>
+
+                      {badge && activeTab === 'All' && (
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold tracking-wider uppercase px-2 py-0.5 rounded-md border ${badge.bg}`}
+                        >
+                          <span>{badge.icon}</span>
+                          <span>{section}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Single Base Price */}
+                    {itemVariants.length === 0 && item.base_price !== null && (
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-xl text-xs whitespace-nowrap shadow-sm">
+                          ₦{Number(item.base_price).toLocaleString()}
+                        </span>
+                        <button
+                          onClick={() =>
+                            handleWhatsAppOrder(item.title, undefined, item.base_price!)
+                          }
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 p-1.5 rounded-xl text-xs transition-all"
+                          title="Order on WhatsApp"
+                        >
+                          💬
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {item.description && (
+                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
+                      {item.description}
+                    </p>
+                  )}
+
+                  {/* Item Variants List */}
+                  {itemVariants.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-zinc-800/80 space-y-2">
+                      {itemVariants.map((variant) => (
+                        <div
+                          key={variant.id}
+                          className="flex justify-between items-center text-xs p-2 rounded-xl bg-zinc-950/50 hover:bg-zinc-950 border border-zinc-800/50 transition-colors"
+                        >
+                          <span className="text-zinc-300 font-medium">
+                            {variant.variant_label}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-lg text-[11px]">
+                              ₦{Number(variant.price).toLocaleString()}
+                            </span>
+                            <button
+                              onClick={() =>
+                                handleWhatsAppOrder(
+                                  item.title,
+                                  variant.variant_label,
+                                  variant.price
+                                )
+                              }
+                              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all"
+                            >
+                              + Order
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Floating Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/80 py-2.5 px-4">
+        <div className="max-w-md mx-auto flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span className="text-zinc-400 font-medium">Need Assistance?</span>
+          </div>
+          <button
+            onClick={() => handleWhatsAppOrder('General Inquiry')}
+            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-xs"
+          >
+            <span>💬</span>
+            <span>WhatsApp Order</span>
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
