@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
+import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl =
@@ -74,13 +75,13 @@ export default function TenantMenuPage({
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function loadTenantData() {
       setLoading(true);
       setFetchError(null);
 
-      // 1. Resolve Tenant by Slug
       const { data: tenantData, error: tenantErr } = await supabase
         .from('tenants')
         .select('*')
@@ -95,20 +96,10 @@ export default function TenantMenuPage({
 
       setTenant(tenantData as Tenant);
 
-      // 2. Fetch Tenant Specific Data
       const [catRes, itemRes, varRes] = await Promise.all([
-        supabase
-          .from('categories')
-          .select('*')
-          .eq('tenant_id', tenantData.id),
-        supabase
-          .from('menu_items')
-          .select('*')
-          .eq('tenant_id', tenantData.id),
-        supabase
-          .from('item_variants')
-          .select('*')
-          .eq('tenant_id', tenantData.id),
+        supabase.from('categories').select('*').eq('tenant_id', tenantData.id),
+        supabase.from('menu_items').select('*').eq('tenant_id', tenantData.id),
+        supabase.from('item_variants').select('*').eq('tenant_id', tenantData.id),
       ]);
 
       if (catRes.error || itemRes.error || varRes.error) {
@@ -158,6 +149,19 @@ export default function TenantMenuPage({
     existing.push(v);
     variantsByItemId.set(v.item_id, existing);
   });
+
+  const getCategoryFallbackEmoji = (categoryId: string | null) => {
+    const section = (categoryId ? categoryMap.get(categoryId) : 'Bar') || 'Bar';
+    switch (section.toLowerCase()) {
+      case 'restaurant':
+        return '🍽️';
+      case 'hotel':
+        return '🏨';
+      case 'bar':
+      default:
+        return '🍹';
+    }
+  };
 
   const filteredItems = menuItems.filter((item) => {
     const section =
@@ -256,15 +260,19 @@ export default function TenantMenuPage({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased pb-28">
-      {/* Dynamic Hero Header */}
       <div className="relative bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-zinc-950 border-b border-zinc-800/80 pt-8 pb-6 px-4 text-center overflow-hidden">
         <div className="relative z-10 max-w-md mx-auto">
-          {tenant.logo_url ? (
-            <img
-              src={tenant.logo_url}
-              alt={tenant.name}
-              className="w-16 h-16 mx-auto mb-3 rounded-2xl object-cover border border-zinc-800 shadow-lg"
-            />
+          {tenant.logo_url && !imageErrors['logo'] ? (
+            <div className="relative w-16 h-16 mx-auto mb-3 rounded-2xl overflow-hidden border border-zinc-800 shadow-lg">
+              <Image
+                src={tenant.logo_url}
+                alt={tenant.name}
+                fill
+                sizes="64px"
+                className="object-cover"
+                onError={() => setImageErrors((prev) => ({ ...prev, logo: true }))}
+              />
+            </div>
           ) : (
             <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20">
               <div className="w-full h-full bg-zinc-950 rounded-[14px] flex items-center justify-center font-extrabold text-amber-400 text-xl tracking-wider">
@@ -301,7 +309,6 @@ export default function TenantMenuPage({
       </div>
 
       <div className="max-w-md mx-auto px-4 mt-4">
-        {/* Search */}
         <div className="relative mb-4">
           <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">🔍</span>
           <input
@@ -313,7 +320,6 @@ export default function TenantMenuPage({
           />
         </div>
 
-        {/* Section Tabs */}
         <div className="sticky top-2 z-30 mb-5 bg-zinc-950/80 backdrop-blur-xl p-1.5 rounded-2xl border border-zinc-800/80 shadow-2xl flex gap-1.5 overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -331,21 +337,30 @@ export default function TenantMenuPage({
           ))}
         </div>
 
-        {/* Item List */}
         <div className="space-y-3.5">
           {filteredItems.map((item) => {
             const itemVariants = variantsByItemId.get(item.id) || [];
+            const hasImageError = imageErrors[item.id];
 
             return (
               <div
                 key={item.id}
                 className="p-4 bg-zinc-900/80 rounded-2xl border border-zinc-800/80 shadow-lg flex gap-3.5 items-center"
               >
-                <div className="w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-2xl">
-                  {item.image_url ? (
-                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                <div className="relative w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-2xl">
+                  {item.image_url && !hasImageError ? (
+                    <Image
+                      src={item.image_url}
+                      alt={item.title}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                      onError={() =>
+                        setImageErrors((prev) => ({ ...prev, [item.id]: true }))
+                      }
+                    />
                   ) : (
-                    <span>🍹</span>
+                    <span>{getCategoryFallbackEmoji(item.category_id)}</span>
                   )}
                 </div>
 
@@ -355,7 +370,6 @@ export default function TenantMenuPage({
                     <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{item.description}</p>
                   )}
 
-                  {/* Single Base Price */}
                   {itemVariants.length === 0 && item.base_price !== null && (
                     <div className="mt-2.5 pt-2 border-t border-zinc-800/80 flex justify-end items-center gap-2">
                       <span className="font-bold text-amber-400 text-[11px]">
@@ -370,7 +384,6 @@ export default function TenantMenuPage({
                     </div>
                   )}
 
-                  {/* Variants */}
                   {itemVariants.length > 0 && (
                     <div className="mt-2.5 pt-2 border-t border-zinc-800/80 space-y-1.5">
                       {itemVariants.map((variant) => (
@@ -398,7 +411,6 @@ export default function TenantMenuPage({
         </div>
       </div>
 
-      {/* Floating Bottom Cart Trigger */}
       {cartItemCount > 0 && (
         <div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto">
           <button
@@ -416,7 +428,6 @@ export default function TenantMenuPage({
         </div>
       )}
 
-      {/* Cart Drawer */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end justify-center">
           <div className="bg-zinc-900 border-t border-zinc-800 w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[85vh] flex flex-col">
@@ -461,12 +472,13 @@ export default function TenantMenuPage({
         </div>
       )}
 
-      {/* QR Modal */}
       {isQRModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-zinc-900 border border-zinc-800 max-w-xs w-full rounded-3xl p-6 text-center space-y-4">
             <h3 className="font-extrabold text-white text-base">{tenant.name} QR</h3>
-            <img src={qrCodeUrl} alt="Table QR" className="w-48 h-48 mx-auto rounded-xl" />
+            <div className="relative w-48 h-48 mx-auto">
+              <Image src={qrCodeUrl} alt="Table QR" fill unoptimized className="rounded-xl" />
+            </div>
             <button onClick={() => setIsQRModalOpen(false)} className="w-full bg-zinc-800 text-white text-xs font-bold py-2.5 rounded-xl">Close</button>
           </div>
         </div>
