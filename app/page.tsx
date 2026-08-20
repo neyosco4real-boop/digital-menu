@@ -60,7 +60,7 @@ export default function TenantMenuPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = use(params);
+  const paramsData = use(params); const slug = paramsData?.slug || "luxury-lounge";
 
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
