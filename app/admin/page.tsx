@@ -147,7 +147,7 @@ export default function AdminControlPanel() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#090A0C] text-white flex items-center justify-center font-sans">
-        <div className="animate-pulse text-neutral-400">Loading Dashboard...</div>
+        <div className="animate-pulse text-amber-500 font-bold">Loading Control Panel...</div>
       </div>
     );
   }
@@ -171,11 +171,21 @@ export default function AdminControlPanel() {
             <p className="text-xs text-neutral-400 mt-1">Manage Menu Items & Prices</p>
           </div>
 
-          <div className="flex items-center gap-2 bg-[#121418] p-1.5 rounded-2xl border border-neutral-800">
+          <div className="flex flex-wrap items-center gap-2 bg-[#121418] p-1.5 rounded-2xl border border-neutral-800">
+            {/* Direct Link to Customer Menu */}
+            <a
+              href="https://digital-menu-5rnq.vercel.app/menu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 rounded-xl text-xs font-black bg-neutral-900 border border-neutral-700 text-amber-400 hover:text-amber-300 hover:border-amber-500 flex items-center gap-1.5 transition-all"
+            >
+              🌐 CUSTOMER MENU ↗
+            </a>
+
             <button
               onClick={() => setActiveTab("qr")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "qr" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
+                activeTab === "qr" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
               }`}
             >
               Menu QR Code
@@ -193,7 +203,7 @@ export default function AdminControlPanel() {
             <button
               onClick={() => setActiveTab("orders")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "orders" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
+                activeTab === "orders" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
               }`}
             >
               LIVE ORDERS ({orders.length})
@@ -326,6 +336,7 @@ export default function AdminControlPanel() {
             <div className="bg-white p-4 rounded-xl inline-block">
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://digital-menu-5rnq.vercel.app/menu`)}`} alt="QR Code" className="w-40 h-40" />
             </div>
+            <p className="text-xs text-neutral-400">Scans directly open: <br/><span className="text-amber-500 font-bold">digital-menu-5rnq.vercel.app/menu</span></p>
           </div>
         )}
 
