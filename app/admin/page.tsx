@@ -156,6 +156,98 @@ export default function AdminControlPanel() {
     );
   }
 
+  // ISOLATED QR CODE VIEW
+  if (activeTab === "qr") {
+    return (
+      <div className="min-h-screen bg-[#07080a] text-white p-6 font-sans flex items-center justify-center">
+        <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md w-full space-y-6 shadow-2xl relative">
+          
+          <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+            <button
+              onClick={() => setActiveTab("items")}
+              className="bg-[#07080a] border border-neutral-800 hover:border-amber-500/50 text-neutral-300 hover:text-amber-400 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+            >
+              ← Back
+            </button>
+            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+              QR GENERATOR
+            </span>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">Dynamic Table QR Generator</h3>
+            <p className="text-xs text-neutral-400 mt-1">Select or type a table number to generate a specific QR code</p>
+          </div>
+
+          <div className="space-y-3 bg-[#07080a] p-4 rounded-xl border border-neutral-800">
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-xs font-bold text-neutral-300 uppercase">Table Number:</label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={selectedTable}
+                onChange={(e) => setSelectedTable(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-20 bg-[#101216] border border-amber-500/50 rounded-lg px-3 py-1.5 text-center text-sm font-black text-amber-500 focus:outline-none focus:border-amber-400"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 justify-center pt-2 border-t border-neutral-800/60">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setSelectedTable(num)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                    selectedTable === num
+                      ? "bg-amber-500 text-black font-black"
+                      : "bg-[#101216] text-neutral-400 border border-neutral-800 hover:text-white"
+                  }`}
+                >
+                  T-{num}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-2xl inline-block shadow-2xl relative group">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
+              )}`}
+              alt={`Table ${selectedTable} QR Code`}
+              className="w-48 h-48 mx-auto"
+            />
+            <div className="mt-2 pt-2 border-t border-neutral-200">
+              <span className="text-xs font-black text-neutral-900 uppercase tracking-widest">
+                TABLE #{selectedTable}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-[#07080a] px-4 py-2.5 rounded-xl border border-neutral-800 text-xs font-mono text-amber-400/90 truncate">
+              digital-menu-5rnq.vercel.app/menu?table={selectedTable}
+            </div>
+
+            <a
+              href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
+              )}`}
+              target="_blank"
+              download={`table-${selectedTable}-qr.png`}
+              rel="noopener noreferrer"
+              className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            >
+              <span>📥</span> DOWNLOAD TABLE {selectedTable} QR CODE
+            </a>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // STANDARD ADMIN DASHBOARD VIEW
   return (
     <div className="min-h-screen bg-[#07080a] text-white p-6 md:p-10 font-sans selection:bg-amber-500 selection:text-black flex flex-col justify-center">
       <div className="max-w-7xl mx-auto w-full space-y-8">
@@ -166,79 +258,74 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Navigation & Stats Bar (hidden when QR tab is selected) */}
-        {activeTab !== "qr" && (
-          <>
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-neutral-800/80 pb-6">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 tracking-tight uppercase">
-                    ADMIN CONTROL PANEL
-                  </h1>
-                </div>
-                <p className="text-xs text-neutral-400 mt-1 font-medium">Manage Menu Items, Live Orders & QR Codes</p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 bg-[#101216] p-1.5 rounded-2xl border border-neutral-800/90 shadow-inner">
-                <a
-                  href="https://digital-menu-5rnq.vercel.app/menu"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-neutral-900 to-neutral-800 border border-neutral-700 text-amber-400 hover:text-amber-300 hover:border-amber-500/80 flex items-center gap-1.5 transition-all shadow-md hover:shadow-amber-500/10 active:scale-95"
-                >
-                  🌐 CUSTOMER MENU ↗
-                </a>
-
-                <button
-                  onClick={() => setActiveTab("qr")}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                    activeTab === "qr" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-                  }`}
-                >
-                  Menu QR Code
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("items")}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${
-                    activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-                  }`}
-                >
-                  MENU ITEMS
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("orders")}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                    activeTab === "orders" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-                  }`}
-                >
-                  LIVE ORDERS ({orders.length})
-                </button>
-              </div>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-neutral-800/80 pb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 tracking-tight uppercase">
+                ADMIN CONTROL PANEL
+              </h1>
             </div>
+            <p className="text-xs text-neutral-400 mt-1 font-medium">Manage Menu Items, Live Orders & QR Codes</p>
+          </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Total Dishes</p>
-                <p className="text-xl font-black text-amber-500">{items.length}</p>
-              </div>
-              <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Restaurant Items</p>
-                <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "restaurant").length}</p>
-              </div>
-              <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Bar Drinks</p>
-                <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "bar").length}</p>
-              </div>
-              <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-                <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Hotel Services</p>
-                <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "hotel").length}</p>
-              </div>
-            </div>
-          </>
-        )}
+          <div className="flex flex-wrap items-center gap-2 bg-[#101216] p-1.5 rounded-2xl border border-neutral-800/90 shadow-inner">
+            <a
+              href="https://digital-menu-5rnq.vercel.app/menu"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-neutral-900 to-neutral-800 border border-neutral-700 text-amber-400 hover:text-amber-300 hover:border-amber-500/80 flex items-center gap-1.5 transition-all shadow-md hover:shadow-amber-500/10 active:scale-95"
+            >
+              🌐 CUSTOMER MENU ↗
+            </a>
+
+            <button
+              onClick={() => setActiveTab("qr")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                activeTab === "qr" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+              }`}
+            >
+              Menu QR Code
+            </button>
+
+            <button
+              onClick={() => setActiveTab("items")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${
+                activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+              }`}
+            >
+              MENU ITEMS
+            </button>
+
+            <button
+              onClick={() => setActiveTab("orders")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                activeTab === "orders" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+              }`}
+            >
+              LIVE ORDERS ({orders.length})
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Total Dishes</p>
+            <p className="text-xl font-black text-amber-500">{items.length}</p>
+          </div>
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Restaurant Items</p>
+            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "restaurant").length}</p>
+          </div>
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Bar Drinks</p>
+            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "bar").length}</p>
+          </div>
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Hotel Services</p>
+            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "hotel").length}</p>
+          </div>
+        </div>
 
         {/* Tab 1: Menu Items */}
         {activeTab === "items" && (
@@ -367,92 +454,6 @@ export default function AdminControlPanel() {
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: QR Code Card Only */}
-        {activeTab === "qr" && (
-          <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md mx-auto space-y-6 shadow-2xl relative my-auto">
-            
-            <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
-              <button
-                onClick={() => setActiveTab("items")}
-                className="bg-[#07080a] border border-neutral-800 hover:border-amber-500/50 text-neutral-300 hover:text-amber-400 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
-              >
-                ← Back
-              </button>
-              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
-                QR GENERATOR
-              </span>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">Dynamic Table QR Generator</h3>
-              <p className="text-xs text-neutral-400 mt-1">Select or type a table number to generate a specific QR code</p>
-            </div>
-
-            <div className="space-y-3 bg-[#07080a] p-4 rounded-xl border border-neutral-800">
-              <div className="flex items-center justify-between gap-3">
-                <label className="text-xs font-bold text-neutral-300 uppercase">Table Number:</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={selectedTable}
-                  onChange={(e) => setSelectedTable(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-20 bg-[#101216] border border-amber-500/50 rounded-lg px-3 py-1.5 text-center text-sm font-black text-amber-500 focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-1.5 justify-center pt-2 border-t border-neutral-800/60">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => setSelectedTable(num)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedTable === num
-                        ? "bg-amber-500 text-black font-black"
-                        : "bg-[#101216] text-neutral-400 border border-neutral-800 hover:text-white"
-                    }`}
-                  >
-                    T-{num}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl inline-block shadow-2xl relative group">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                  `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
-                )}`}
-                alt={`Table ${selectedTable} QR Code`}
-                className="w-48 h-48 mx-auto"
-              />
-              <div className="mt-2 pt-2 border-t border-neutral-200">
-                <span className="text-xs font-black text-neutral-900 uppercase tracking-widest">
-                  TABLE #{selectedTable}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="bg-[#07080a] px-4 py-2.5 rounded-xl border border-neutral-800 text-xs font-mono text-amber-400/90 truncate">
-                digital-menu-5rnq.vercel.app/menu?table={selectedTable}
-              </div>
-
-              <a
-                href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                  `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
-                )}`}
-                target="_blank"
-                download={`table-${selectedTable}-qr.png`}
-                rel="noopener noreferrer"
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-              >
-                <span>📥</span> DOWNLOAD TABLE {selectedTable} QR CODE
-              </a>
             </div>
           </div>
         )}
