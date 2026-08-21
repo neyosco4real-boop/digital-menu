@@ -69,12 +69,25 @@ export default function CustomerMenu() {
     0
   );
 
-  const categories = ["All", ...Array.from(new Set(menuItems.map((i) => i.category || "Dishes")))];
+  // Normalize and deduplicate categories
+  const rawCategories = menuItems
+    .map((i) => (i.category || "Dishes").trim())
+    .filter(Boolean);
+
+  const uniqueCategories = Array.from(
+    new Map(rawCategories.map((cat) => [cat.toUpperCase(), cat])).values()
+  );
+
+  const categories = ["All", ...uniqueCategories];
 
   const filteredItems =
-    selectedCategory === "All"
+    selectedCategory.toUpperCase() === "ALL"
       ? menuItems
-      : menuItems.filter((i) => (i.category || "Dishes") === selectedCategory);
+      : menuItems.filter(
+          (i) =>
+            (i.category || "Dishes").trim().toUpperCase() ===
+            selectedCategory.trim().toUpperCase()
+        );
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || submitting) return;
@@ -91,7 +104,7 @@ export default function CustomerMenu() {
       table_number: String(tableNumber),
       items: formattedItems,
       total_price: Number(totalPrice),
-      status: "Pending"
+      status: "Pending",
     };
 
     try {
@@ -145,14 +158,15 @@ export default function CustomerMenu() {
           </div>
         )}
 
+        {/* Deduplicated Clean Category Navigation Bar */}
         {categories.length > 1 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border ${
-                  selectedCategory === cat
+                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border ${
+                  selectedCategory.toUpperCase() === cat.toUpperCase()
                     ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
                     : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
                 }`}
