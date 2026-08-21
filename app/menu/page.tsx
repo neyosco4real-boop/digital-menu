@@ -97,46 +97,55 @@ function CustomerMenuContent() {
       quantity: i.quantity,
     }));
 
-    // Flexible payload matching standard Supabase orders schema without store_id
-    const primaryPayload = {
-      table_number: tableParam.toString(),
-      table: tableParam.toString(),
-      items: formattedItems,
-      total_price: totalCartAmount,
-      total: totalCartAmount,
-      status: "Pending",
-    };
+    // Array of column payload variations to try in order
+    const payloadOptions = [
+      {
+        table_number: tableParam.toString(),
+        items: formattedItems,
+        total: totalCartAmount,
+        status: "Pending",
+      },
+      {
+        table_number: tableParam.toString(),
+        items: formattedItems,
+        amount: totalCartAmount,
+        status: "Pending",
+      },
+      {
+        table: tableParam.toString(),
+        items: formattedItems,
+        total: totalCartAmount,
+        status: "Pending",
+      },
+      {
+        items: formattedItems,
+        status: "Pending",
+      },
+    ];
 
-    try {
-      let { error } = await supabase.from("orders").insert([primaryPayload]);
+    let success = false;
+    let lastErrorMsg = "";
 
-      // Fallback if table or total column names differ
-      if (error && error.code === "PGRST204") {
-        const fallbackPayload = {
-          table_number: tableParam.toString(),
-          items: formattedItems,
-          total_price: totalCartAmount,
-          status: "Pending",
-        };
-        const fallbackRes = await supabase.from("orders").insert([fallbackPayload]);
-        error = fallbackRes.error;
-      }
-
-      if (error) {
-        console.error("Order submit error:", error);
-        setOrderError(error.message);
+    for (const payload of payloadOptions) {
+      const { error } = await supabase.from("orders").insert([payload]);
+      if (!error) {
+        success = true;
+        break;
       } else {
-        setCart([]);
-        setIsCartOpen(false);
-        setOrderSuccess(true);
-        setTimeout(() => setOrderSuccess(false), 6000);
+        lastErrorMsg = error.message;
       }
-    } catch (e: any) {
-      console.error(e);
-      setOrderError(e?.message || "Failed to submit order.");
-    } finally {
-      setOrderSubmitting(false);
     }
+
+    if (success) {
+      setCart([]);
+      setIsCartOpen(false);
+      setOrderSuccess(true);
+      setTimeout(() => setOrderSuccess(false), 6000);
+    } else {
+      setOrderError(lastErrorMsg || "Failed to submit order. Please check column names in Supabase.");
+    }
+
+    setOrderSubmitting(false);
   };
 
   const dynamicCategories = items.map((i) => (i.section || i.category || "").toUpperCase()).filter(Boolean);
