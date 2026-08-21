@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -26,8 +29,6 @@ export default function AdminControlPanel() {
   const [section, setSection] = useState("Restaurant");
   const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -58,7 +59,7 @@ export default function AdminControlPanel() {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
       gain.gain.setValueAtTime(0.5, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
@@ -278,7 +279,7 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Tab 2: Orders View with Live Alarm Display */}
+        {/* Tab 2: Orders View */}
         {activeTab === "orders" && (
           <div className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
