@@ -69,24 +69,33 @@ export default function CustomerMenu() {
     0
   );
 
-  // Normalize and deduplicate categories
-  const rawCategories = menuItems
-    .map((i) => (i.category || "Dishes").trim())
-    .filter(Boolean);
+  // Deep sanitize category strings to strip hidden whitespace and non-printable characters
+  const sanitizeCategory = (cat?: string) =>
+    (cat || "Dishes")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "") // remove zero-width characters
+      .trim()
+      .replace(/\s+/g, " ");
 
-  const uniqueCategories = Array.from(
-    new Map(rawCategories.map((cat) => [cat.toUpperCase(), cat])).values()
-  );
+  const rawCategories = menuItems.map((i) => sanitizeCategory(i.category));
 
-  const categories = ["All", ...uniqueCategories];
+  // Deduplicate case-insensitively while preserving original display title
+  const categoryMap = new Map<string, string>();
+  rawCategories.forEach((cat) => {
+    const key = cat.toUpperCase();
+    if (!categoryMap.has(key)) {
+      categoryMap.set(key, cat);
+    }
+  });
+
+  const categories = ["All", ...Array.from(categoryMap.values())];
 
   const filteredItems =
     selectedCategory.toUpperCase() === "ALL"
       ? menuItems
       : menuItems.filter(
           (i) =>
-            (i.category || "Dishes").trim().toUpperCase() ===
-            selectedCategory.trim().toUpperCase()
+            sanitizeCategory(i.category).toUpperCase() ===
+            selectedCategory.toUpperCase()
         );
 
   const handlePlaceOrder = async () => {
@@ -158,7 +167,7 @@ export default function CustomerMenu() {
           </div>
         )}
 
-        {/* Deduplicated Clean Category Navigation Bar */}
+        {/* Clean, Fully Deduplicated Category Bar */}
         {categories.length > 1 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {categories.map((cat) => (
@@ -200,7 +209,7 @@ export default function CustomerMenu() {
                         {item.title || item.name}
                       </h3>
                       <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 shrink-0">
-                        {item.category || "Dishes"}
+                        {sanitizeCategory(item.category)}
                       </span>
                     </div>
 
