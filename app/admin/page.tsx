@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [activeFilter, setActiveFilter] = useState<string>("All");
 
@@ -187,6 +188,24 @@ export default function AdminDashboard() {
     setUpdatingId(null);
   };
 
+  const handleDeleteMenuItem = async (itemId: string) => {
+    if (!confirm("Are you sure you want to remove this item from the menu?")) return;
+
+    setDeletingId(itemId);
+    setMenuItems((prev) => prev.filter((item) => item.id !== itemId));
+
+    const { error } = await supabase
+      .from("menu_items")
+      .delete()
+      .eq("id", itemId);
+
+    if (error) {
+      alert(`Error deleting item: ${error.message}`);
+      fetchMenuItems();
+    }
+    setDeletingId(null);
+  };
+
   const handleDeleteOrder = async (orderId: string) => {
     if (!confirm("Are you sure you want to cancel/delete this order?")) return;
 
@@ -228,7 +247,6 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* 1. Customer Menu Navigator */}
               <a
                 href="/menu/1"
                 target="_blank"
@@ -239,7 +257,6 @@ export default function AdminDashboard() {
                 <span>Customer Menu</span>
               </a>
 
-              {/* 2. QR Code Generator Trigger */}
               <button
                 onClick={() => setShowQRModal(true)}
                 className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black text-xs font-black uppercase tracking-wider px-5 py-3 rounded-2xl transition-all shadow-lg shadow-amber-500/10 active:scale-95"
@@ -257,7 +274,7 @@ export default function AdminDashboard() {
           {/* LEFT SIDE: ORDERS & ADD ITEM FORM (5 COLUMNS) */}
           <div className="lg:col-span-5 space-y-8">
             
-            {/* 4. LIVE ORDERS SECTION */}
+            {/* LIVE ORDERS SECTION */}
             <section className="bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 shadow-2xl space-y-5">
               <div className="flex items-center justify-between border-b border-neutral-800/60 pb-4">
                 <div className="flex items-center gap-2.5">
@@ -270,7 +287,6 @@ export default function AdminDashboard() {
                   </h2>
                 </div>
 
-                {/* 3. Alarm Test Button */}
                 <button
                   onClick={playOrderAlarm}
                   className="text-[10px] bg-[#141722] hover:bg-neutral-800 text-neutral-300 hover:text-white px-3 py-1.5 rounded-xl border border-neutral-800 transition-all font-bold flex items-center gap-1.5"
@@ -302,7 +318,6 @@ export default function AdminDashboard() {
                           </span>
                         </div>
 
-                        {/* 5. CANCEL / DELETE BUTTON */}
                         <button
                           onClick={() => handleDeleteOrder(order.id)}
                           className="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 text-[10px] font-black uppercase px-2.5 py-1 rounded-xl transition-all active:scale-95"
@@ -437,7 +452,7 @@ export default function AdminDashboard() {
             </section>
           </div>
 
-          {/* RIGHT SIDE: EXISTING MENU ITEMS (EXPANDED TO 7 COLUMNS) */}
+          {/* RIGHT SIDE: EXISTING MENU ITEMS WITH DELETE BUTTON */}
           <section className="lg:col-span-7 bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-neutral-800/60 pb-5">
               <div>
@@ -470,12 +485,12 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Expanded Multi-Column / Larger Grid Cards */}
+            {/* Item Grid Cards with Delete Controls */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[850px] overflow-y-auto pr-1.5">
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-[#12141e] border border-neutral-800/90 hover:border-amber-500/40 p-4 rounded-2xl flex flex-col justify-between gap-4 shadow-xl hover:shadow-2xl hover:shadow-amber-500/5 transition-all group"
+                  className="bg-[#12141e] border border-neutral-800/90 hover:border-amber-500/40 p-4 rounded-2xl flex flex-col justify-between gap-4 shadow-xl hover:shadow-2xl hover:shadow-amber-500/5 transition-all group relative"
                 >
                   <div className="flex items-start gap-3.5">
                     {item.image_url ? (
@@ -506,24 +521,35 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex items-center justify-between border-t border-neutral-800/60 pt-3 mt-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
-                      Category
-                    </span>
                     {/* Inline Category Dropdown */}
-                    <select
-                      value={item.category || "Restaurant"}
-                      disabled={updatingId === item.id}
-                      onChange={(e) =>
-                        handleCategoryChange(item.id, e.target.value)
-                      }
-                      className="bg-[#08090e] border border-neutral-800 focus:border-amber-500 text-amber-400 text-xs font-black py-1.5 px-3 rounded-xl outline-none cursor-pointer transition-all"
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
+                        Cat:
+                      </span>
+                      <select
+                        value={item.category || "Restaurant"}
+                        disabled={updatingId === item.id}
+                        onChange={(e) =>
+                          handleCategoryChange(item.id, e.target.value)
+                        }
+                        className="bg-[#08090e] border border-neutral-800 focus:border-amber-500 text-amber-400 text-xs font-black py-1.5 px-2.5 rounded-xl outline-none cursor-pointer transition-all"
+                      >
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat} className="bg-[#0b0c12] text-white">
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* ITEM DELETE BUTTON */}
+                    <button
+                      onClick={() => handleDeleteMenuItem(item.id)}
+                      disabled={deletingId === item.id}
+                      className="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/20 text-[10px] font-black uppercase px-3 py-1.5 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1"
                     >
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat} className="bg-[#0b0c12] text-white">
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
+                      <span>🗑️</span> Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -533,7 +559,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* 2. DYNAMIC TABLE 1-10 QR CODE MODAL */}
+      {/* DYNAMIC TABLE 1-10 QR CODE MODAL */}
       {showQRModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0b0c12] border border-neutral-800 rounded-3xl p-6 md:p-8 max-w-lg w-full space-y-6 shadow-2xl relative">
@@ -549,7 +575,6 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* Table Buttons Grid */}
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
                 Select Table / Suite Number (1 - 10)
@@ -571,7 +596,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* QR Code Container */}
             <div className="bg-white p-6 rounded-3xl shadow-2xl flex justify-center mx-auto max-w-[220px]">
               {baseUrl ? (
                 <QRCode value={`${baseUrl}/menu/${selectedTable}`} size={180} />
