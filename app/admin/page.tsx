@@ -17,34 +17,6 @@ export default function AdminControlPanel() {
   const [store, setStore] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState
-# 1. Navigate to project root
-cd ~/digital-menu
-
-# 2. Confirm you are in the right folder (should list app, package.json, etc.)
-ls -la
-
-# 3. Write the updated app/admin/page.tsx file
-cat << 'EOF' > app/admin/page.tsx
-"use client";
-
-import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-);
-
-export default function AdminControlPanel() {
-  const [activeTab, setActiveTab] = useState<"items" | "orders" | "qr">("items");
-  const [selectedSection, setSelectedSection] = useState<string>("ALL");
-  const [selectedTable, setSelectedTable] = useState<number>(1);
-  const [items, setItems] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [store, setStore] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
 
@@ -194,7 +166,7 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Top Navigation & Stats Bar (ONLY SHOWN FOR ITEMS & ORDERS) */}
+        {/* Navigation & Stats Bar (hidden when QR tab is selected) */}
         {activeTab !== "qr" && (
           <>
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-neutral-800/80 pb-6">
@@ -399,7 +371,7 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Tab 3: Isolated QR View (No Header / No Stats) */}
+        {/* Tab 3: QR Code Card Only */}
         {activeTab === "qr" && (
           <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md mx-auto space-y-6 shadow-2xl relative my-auto">
             
