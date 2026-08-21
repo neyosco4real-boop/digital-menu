@@ -36,6 +36,7 @@ function CustomerMenuContent() {
   const [loading, setLoading] = useState(true);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -84,30 +85,44 @@ function CustomerMenuContent() {
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !store) return;
     setOrderSubmitting(true);
+    setOrderError(null);
+
     try {
       const orderPayload = {
         store_id: store.id,
-        table_number: tableParam,
-        items: cart.map((i) => ({ id: i.id, title: i.title, price: i.price, quantity: i.quantity })),
+        table_number: tableParam.toString(),
+        items: cart.map((i) => ({
+          id: i.id,
+          title: i.title,
+          price: i.price,
+          quantity: i.quantity,
+        })),
         total_price: totalCartAmount,
-        status: "Pending"
+        status: "Pending",
       };
 
-      const { error } = await supabase.from("orders").insert([orderPayload]);
-      if (!error) {
+      const { data, error } = await supabase
+        .from("orders")
+        .insert([orderPayload])
+        .select();
+
+      if (error) {
+        console.error("Supabase Order Error:", error);
+        setOrderError(error.message || "Failed to submit order. Please try again.");
+      } else {
         setCart([]);
         setIsCartOpen(false);
         setOrderSuccess(true);
-        setTimeout(() => setOrderSuccess(false), 5000);
+        setTimeout(() => setOrderSuccess(false), 6000);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setOrderError(e?.message || "An unexpected error occurred.");
     } finally {
       setOrderSubmitting(false);
     }
   };
 
-  // Explicitly ensure RESTAURANT, BAR, and HOTEL are included alongside any custom dynamic categories
   const dynamicCategories = items.map((i) => (i.section || i.category || "").toUpperCase()).filter(Boolean);
   const categories = Array.from(new Set(["ALL", "RESTAURANT", "BAR", "HOTEL", ...dynamicCategories]));
 
@@ -131,7 +146,6 @@ function CustomerMenuContent() {
 
   return (
     <div className="min-h-screen bg-[#0d0e12] text-white font-sans pb-32">
-      {/* Top Floating Glass Header */}
       <header className="sticky top-0 z-30 bg-[#0d0e12]/80 backdrop-blur-xl border-b border-neutral-800/80 px-4 py-4 md:px-8 shadow-xl">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -170,11 +184,10 @@ function CustomerMenuContent() {
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         {orderSuccess && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-2xl text-center text-xs font-bold shadow-lg animate-fade-in flex items-center justify-center gap-2">
-            <span>✓ Order submitted! The kitchen is preparing Table #{tableParam}.</span>
+            <span>✓ Order submitted successfully! Live kitchen alert sent for Table #{tableParam}.</span>
           </div>
         )}
 
-        {/* Hero Banner Card */}
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#181a22] to-[#111218] border border-neutral-800/80 p-6 shadow-2xl">
           <div className="relative z-10 space-y-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
@@ -190,7 +203,6 @@ function CustomerMenuContent() {
           <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
         </div>
 
-        {/* Search Input & Category Pills */}
         <div className="space-y-3 sticky top-[73px] z-20 bg-[#0d0e12]/95 backdrop-blur-md pt-2 pb-3">
           <div className="relative">
             <input
@@ -219,7 +231,6 @@ function CustomerMenuContent() {
           </div>
         </div>
 
-        {/* Dynamic Card Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filteredItems.map((item) => (
             <div
@@ -261,7 +272,6 @@ function CustomerMenuContent() {
         </div>
       </main>
 
-      {/* Floating Bottom Cart Bar */}
       {totalCartCount > 0 && !isCartOpen && (
         <div className="fixed bottom-6 left-0 right-0 z-40 px-4">
           <div className="max-w-md mx-auto bg-gradient-to-r from-amber-500 to-amber-400 text-black p-4 rounded-2xl flex items-center justify-between shadow-2xl shadow-amber-500/30 border border-amber-300">
@@ -281,7 +291,6 @@ function CustomerMenuContent() {
         </div>
       )}
 
-      {/* Cart Drawer */}
       {isCartOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex justify-end">
           <div className="bg-[#16181e] border-l border-neutral-800 w-full max-w-md h-full p-6 flex flex-col justify-between shadow-2xl">
@@ -300,6 +309,12 @@ function CustomerMenuContent() {
                   ✕
                 </button>
               </div>
+
+              {orderError && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-xs font-bold">
+                  {orderError}
+                </div>
+              )}
 
               {cart.length === 0 ? (
                 <div className="text-center py-16 space-y-2">
