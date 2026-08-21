@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { useSearchParams } from "next/navigation";
 
@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
-export default function CustomerMenu() {
+function MenuContent() {
   const searchParams = useSearchParams();
   const tableParam = searchParams.get("table") || "1";
 
@@ -320,5 +320,24 @@ export default function CustomerMenu() {
 
       </div>
     </div>
+  );
+}
+
+export default function CustomerMenu() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#07080a] text-white flex items-center justify-center font-sans">
+          <div className="flex items-center gap-3 bg-[#111318] px-6 py-4 rounded-2xl border border-neutral-800 shadow-xl">
+            <div className="w-4 h-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+            <span className="text-amber-500 font-bold text-xs tracking-wider uppercase">
+              Loading Luxury Menu...
+            </span>
+          </div>
+        </div>
+      }
+    >
+      <MenuContent />
+    </Suspense>
   );
 }
