@@ -37,7 +37,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchOrders();
 
-    // Subscribe to live order updates via Supabase Realtime
     const channel = supabase
       .channel("admin-orders-channel")
       .on(
@@ -69,7 +68,7 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       console.error(e);
-    } finally {
+    } font-sans finally {
       setLoadingOrders(false);
     }
   };
@@ -96,11 +95,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    setUpdatingId(orderId);
+    try {
+      const { error } = await supabase.from("orders").delete().eq("id", orderId);
+
+      if (error) {
+        console.error("Failed to delete order:", error);
+      } else {
+        setOrders((prev) => prev.filter((ord) => ord.id !== orderId));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const pendingOrders = orders.filter((o) => o.status === "Pending" || !o.status);
 
   return (
     <div className="min-h-screen bg-[#0d0e12] text-white font-sans p-6 md:p-10 space-y-8">
-      {/* Top Navigation Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-800 pb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -150,7 +165,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Orders Section */}
       {activeTab === "orders" && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -188,14 +202,13 @@ export default function AdminDashboard() {
                     key={order.id}
                     className={`bg-[#16181e] border rounded-3xl p-5 flex flex-col justify-between gap-5 transition-all shadow-xl ${
                       isCompleted
-                        ? "border-emerald-500/30 opacity-60"
+                        ? "border-emerald-500/30 opacity-75"
                         : isCancelled
-                        ? "border-red-500/30 opacity-50"
+                        ? "border-red-500/30 opacity-60"
                         : "border-amber-500/40 hover:border-amber-500/80"
                     }`}
                   >
                     <div className="space-y-4">
-                      {/* Card Header */}
                       <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
                         <span className="text-xs font-black tracking-wider text-amber-500 uppercase bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
                           TABLE #{tableNum}
@@ -213,7 +226,6 @@ export default function AdminDashboard() {
                         </span>
                       </div>
 
-                      {/* Items List */}
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         {itemsList.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-xs">
@@ -228,7 +240,6 @@ export default function AdminDashboard() {
                         ))}
                       </div>
 
-                      {/* Total Price */}
                       <div className="flex justify-between items-center pt-3 border-t border-neutral-800 text-xs">
                         <span className="font-bold text-neutral-400 uppercase">Total:</span>
                         <span className="font-black text-amber-400 text-sm">
@@ -237,9 +248,9 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Action Buttons: Complete & Cancel */}
-                    {!isCompleted && !isCancelled && (
-                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-800/80">
+                    {/* Actions: Complete, Cancel, or Delete */}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-800/80">
+                      {!isCompleted ? (
                         <button
                           onClick={() => handleUpdateStatus(order.id, "Completed")}
                           disabled={updatingId === order.id}
@@ -247,16 +258,20 @@ export default function AdminDashboard() {
                         >
                           ✓ COMPLETE
                         </button>
+                      ) : (
+                        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-[11px] py-2.5 rounded-xl flex items-center justify-center">
+                          ✓ COMPLETED
+                        </div>
+                      )}
 
-                        <button
-                          onClick={() => handleUpdateStatus(order.id, "Cancelled")}
-                          disabled={updatingId === order.id}
-                          className="bg-red-500/10 hover:bg-red-500 border border-red-500/40 text-red-400 hover:text-white font-black text-xs py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50"
-                        >
-                          ✕ CANCEL
-                        </button>
-                      </div>
-                    )}
+                      <button
+                        onClick={() => handleDeleteOrder(order.id)}
+                        disabled={updatingId === order.id}
+                        className="bg-red-500/10 hover:bg-red-500 border border-red-500/40 text-red-400 hover:text-white font-black text-xs py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50"
+                      >
+                        🗑 DELETE CARD
+                      </button>
+                    </div>
                   </div>
                 );
               })}
