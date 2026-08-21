@@ -628,7 +628,7 @@ export default function AdminDashboard() {
                           EDIT
                         </button>
                         <button
-                          onClick={() => handleDeleteMenuItem(item)}
+                          onClick={() => handleDeleteMenuItem(item.id)}
                           className="text-[10px] font-bold bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1 rounded-lg transition-colors"
                         >
                           DELETE
