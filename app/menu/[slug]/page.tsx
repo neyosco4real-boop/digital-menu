@@ -33,6 +33,7 @@ export default function DynamicCustomerMenu() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
     fetchMenu();
@@ -158,17 +159,17 @@ export default function DynamicCustomerMenu() {
           </div>
         )}
 
-        {/* Properly Arranged Nav & Right-Side Search */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 w-full">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none shrink-0">
+        {/* Clean Rearranged Nav Bar with Attached Search Bar Button */}
+        <div className="flex items-center justify-between gap-3 bg-[#12141a]/80 backdrop-blur-md p-2 rounded-2xl border border-neutral-800/80 shadow-2xl">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none flex-1">
             {categories.map((cat) => (
               <button
                 key={cat.name}
                 onClick={() => setSelectedCategory(cat.name)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2 ${
                   selectedCategory.toLowerCase() === cat.name.toLowerCase()
                     ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
-                    : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
+                    : "bg-[#090a0f] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
                 }`}
               >
                 <span>{cat.icon}</span>
@@ -177,23 +178,34 @@ export default function DynamicCustomerMenu() {
             ))}
           </div>
 
-          <div className="relative w-full md:w-64 shrink-0">
-            <input
-              type="text"
-              placeholder="Search menu..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#12141a] border border-neutral-800 text-white placeholder-neutral-500 text-xs px-4 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/50 transition-all pl-9"
-            />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">
-              🔍
-            </span>
-            {searchQuery && (
+          <div className="relative shrink-0 flex items-center">
+            {isSearchOpen ? (
+              <div className="flex items-center bg-[#090a0f] border border-amber-500/50 rounded-xl px-3 py-1.5 transition-all">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  autoFocus
+                  className="bg-transparent text-xs text-white placeholder-neutral-500 focus:outline-none w-28 md:w-40"
+                />
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setSearchQuery("");
+                  }}
+                  className="text-neutral-400 hover:text-white text-xs ml-1 font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs font-bold"
+                onClick={() => setIsSearchOpen(true)}
+                className="bg-[#090a0f] border border-neutral-800 hover:border-amber-500/50 p-2.5 rounded-xl text-xs font-black text-amber-400 transition-all flex items-center gap-1.5 active:scale-95"
+                title="Search menu"
               >
-                ✕
+                🔍 <span className="hidden sm:inline text-[10px] text-neutral-300">SEARCH</span>
               </button>
             )}
           </div>
