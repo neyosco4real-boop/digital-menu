@@ -70,14 +70,6 @@ function CustomerMenuContent() {
     });
   };
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((ci) => (ci.id === id ? { ...ci, quantity: ci.quantity + delta } : ci))
-        .filter((ci) => ci.quantity > 0)
-    );
-  };
-
   const cartTotal = cart.reduce((acc, ci) => acc + (ci.price || 0) * ci.quantity, 0);
 
   const handlePlaceOrder = async () => {
@@ -118,18 +110,23 @@ function CustomerMenuContent() {
   return (
     <div className="min-h-screen bg-[#07080a] text-white font-sans p-4 md:p-8 max-w-4xl mx-auto space-y-6">
       
-      {/* Luxury Hotel Header Card */}
+      {/* Luxury Hotel Header Card with Orbiting Light Beam */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#121318] via-[#0d0e12] to-[#08090c] border border-amber-500/30 rounded-3xl p-6 md:p-10 shadow-[0_0_50px_rgba(217,119,6,0.12)] backdrop-blur-2xl transition-all">
         
-        {/* Glowing Metallic Gold Border Highlight */}
-        <div className="absolute inset-0 rounded-3xl border border-amber-400/20 pointer-events-none" />
+        {/* Orbiting Moving Light Orb Element */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
+          <div className="absolute -top-12 -left-12 w-28 h-28 bg-amber-400 rounded-full blur-2xl opacity-60 animate-[spin_8s_linear_infinite] origin-[180px_180px]" />
+          <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-yellow-300 rounded-full blur-2xl opacity-50 animate-[spin_10s_linear_infinite_reverse] origin-[-180px_-180px]" />
+        </div>
 
-        {/* Ambient Moving Gold Wave Background */}
+        {/* Outer Traveling Border Light Flare */}
+        <div className="absolute inset-[1px] rounded-3xl pointer-events-none overflow-hidden">
+          <div className="absolute w-20 h-full bg-gradient-to-r from-transparent via-amber-300/40 to-transparent blur-md -skew-x-12 animate-[shimmer_4s_infinite]" />
+        </div>
+
+        {/* Ambient Moving Gold Background Glows */}
         <div className="absolute -top-32 -right-32 w-80 h-80 bg-gradient-to-br from-amber-500/20 via-yellow-600/10 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
         <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-gradient-to-tr from-amber-600/15 via-amber-400/5 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
-
-        {/* Animated Shimmer Ray Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/10 to-transparent -translate-x-full animate-[shimmer_5s_infinite]" />
 
         <div className="relative z-10 space-y-4">
           
