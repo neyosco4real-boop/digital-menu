@@ -35,8 +35,8 @@ export default function AdminDashboard() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Audio Context Ref for synthesizing a clear chime/alarm sound
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const playNotificationSound = () => {
@@ -51,13 +51,12 @@ export default function AdminDashboard() {
         ctx.resume();
       }
 
-      // Play double chime/bell frequency pattern for incoming orders
       const now = ctx.currentTime;
       
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = "sine";
-      osc1.frequency.setValueAtTime(880, now); // A5 note
+      osc1.frequency.setValueAtTime(880, now);
       gain1.gain.setValueAtTime(0.3, now);
       gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
       osc1.connect(gain1);
@@ -68,7 +67,7 @@ export default function AdminDashboard() {
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = "sine";
-      osc2.frequency.setValueAtTime(1318.51, now + 0.2); // E6 note
+      osc2.frequency.setValueAtTime(1318.51, now + 0.2);
       gain2.gain.setValueAtTime(0.4, now + 0.2);
       gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
       osc2.connect(gain2);
@@ -89,7 +88,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchOrders();
 
-    // Listen to real-time order insertions
     const channel = supabase
       .channel("admin-orders-live-alarm")
       .on(
@@ -99,10 +97,8 @@ export default function AdminDashboard() {
           const newOrder = payload.new as Order;
           const tableNum = newOrder.table_number || newOrder.table || "1";
 
-          // Play alarm sound
           playNotificationSound();
 
-          // Show banner alert
           setNewOrderAlert(`🔔 NEW ORDER RECEIVED FOR TABLE #${tableNum}!`);
           setTimeout(() => setNewOrderAlert(null), 8000);
 
@@ -131,7 +127,7 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchOrders = async () => {
-    setLoadingOrders(true);
+    setIsRefreshing(true);
     try {
       const { data, error } = await supabase
         .from("orders")
@@ -147,6 +143,7 @@ export default function AdminDashboard() {
       console.error(e);
     } finally {
       setLoadingOrders(false);
+      setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -193,7 +190,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0d0e12] text-white font-sans p-6 md:p-10 space-y-8">
-      {/* Top Banner for New Incoming Orders */}
       {newOrderAlert && (
         <div className="bg-amber-500 text-black font-black text-sm p-4 rounded-2xl shadow-2xl flex items-center justify-between border-2 border-amber-300 animate-bounce">
           <div className="flex items-center gap-3">
@@ -209,7 +205,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-800 pb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -224,7 +219,15 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 bg-[#16181e] border border-neutral-800 p-1.5 rounded-2xl">
-          {/* Sound Toggle Button */}
+          <button
+            onClick={fetchOrders}
+            disabled={isRefreshing}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 border border-neutral-700 active:scale-95 disabled:opacity-50"
+          >
+            <span className={`inline-block ${isRefreshing ? "animate-spin" : ""}`}>🔄</span>
+            <span>{isRefreshing ? "SYNCING..." : "REFRESH"}</span>
+          </button>
+
           <button
             onClick={enableAudio}
             className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
@@ -282,9 +285,11 @@ export default function AdminDashboard() {
             </h2>
             <button
               onClick={fetchOrders}
-              className="text-xs text-amber-500 font-bold hover:underline"
+              disabled={isRefreshing}
+              className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
             >
-              Refresh Orders
+              <span className={`inline-block ${isRefreshing ? "animate-spin" : ""}`}>🔄</span>
+              <span>{isRefreshing ? "SYNCING..." : "REFRESH ORDERS"}</span>
             </button>
           </div>
 
