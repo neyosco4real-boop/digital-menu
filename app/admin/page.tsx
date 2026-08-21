@@ -11,6 +11,7 @@ const supabase = createClient(
 export default function AdminControlPanel() {
   const [activeTab, setActiveTab] = useState<"items" | "orders" | "qr">("items");
   const [selectedSection, setSelectedSection] = useState<string>("ALL");
+  const [selectedTable, setSelectedTable] = useState<number>(1);
   const [items, setItems] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [store, setStore] = useState<any>(null);
@@ -373,12 +374,77 @@ export default function AdminControlPanel() {
         )}
 
         {activeTab === "qr" && (
-          <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-sm mx-auto space-y-4 shadow-2xl">
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">Table QR Code</h3>
-            <div className="bg-white p-4 rounded-2xl inline-block shadow-xl">
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://digital-menu-5rnq.vercel.app/menu`)}`} alt="QR Code" className="w-44 h-44" />
+          <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md mx-auto space-y-6 shadow-2xl">
+            <div>
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">Dynamic Table QR Generator</h3>
+              <p className="text-xs text-neutral-400 mt-1">Select or type a table number to generate a specific QR code</p>
             </div>
-            <p className="text-xs text-neutral-400">Scans directly open customer menu: <br/><span className="text-amber-500 font-bold">digital-menu-5rnq.vercel.app/menu</span></p>
+
+            {/* Table Number Selector & Quick Buttons */}
+            <div className="space-y-3 bg-[#07080a] p-4 rounded-xl border border-neutral-800">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-bold text-neutral-300 uppercase">Table Number:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={selectedTable}
+                  onChange={(e) => setSelectedTable(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 bg-[#101216] border border-amber-500/50 rounded-lg px-3 py-1.5 text-center text-sm font-black text-amber-500 focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 justify-center pt-2 border-t border-neutral-800/60">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setSelectedTable(num)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                      selectedTable === num
+                        ? "bg-amber-500 text-black font-black"
+                        : "bg-[#101216] text-neutral-400 border border-neutral-800 hover:text-white"
+                    }`}
+                  >
+                    T-{num}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dynamic QR Code Display */}
+            <div className="bg-white p-5 rounded-2xl inline-block shadow-2xl relative group">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                  `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
+                )}`}
+                alt={`Table ${selectedTable} QR Code`}
+                className="w-48 h-48 mx-auto"
+              />
+              <div className="mt-2 pt-2 border-t border-neutral-200">
+                <span className="text-xs font-black text-neutral-900 uppercase tracking-widest">
+                  TABLE #{selectedTable}
+                </span>
+              </div>
+            </div>
+
+            {/* URL Preview & Actions */}
+            <div className="space-y-3">
+              <div className="bg-[#07080a] px-4 py-2.5 rounded-xl border border-neutral-800 text-xs font-mono text-amber-400/90 truncate">
+                digital-menu-5rnq.vercel.app/menu?table={selectedTable}
+              </div>
+
+              <a
+                href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                  `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
+                )}`}
+                target="_blank"
+                download={`table-${selectedTable}-qr.png`}
+                rel="noopener noreferrer"
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+              >
+                <span>📥</span> DOWNLOAD TABLE {selectedTable} QR CODE
+              </a>
+            </div>
           </div>
         )}
 
