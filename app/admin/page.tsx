@@ -16,101 +16,102 @@ export default function CompleteAdminDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [debugError, setDebugError] = useState("");
 
-  // Store Settings state
   const [phone, setPhone] = useState("");
   const [currency, setCurrency] = useState("₦");
 
-  // New Menu Item state
   const [newItemTitle, setNewItemTitle] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("");
 
-  // New Category state
   const [newCategoryName, setNewCategoryName] = useState("");
-
-  // Table QR state
   const [tableNum, setTableNum] = useState("1");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Initialize notification chime
     audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
     fetchInitialData();
   }, []);
 
   const fetchInitialData = async () => {
     setLoading(true);
+    setDebugError("");
     try {
-      // 1. Fetch store
-      let { data: storeData } = await supabase
+      // 1. Get first available store regardless of exact slug casing/naming
+      const { data: storeList, error: storeErr } = await supabase
         .from("stores")
         .select("*")
-        .eq("slug", "luxury-lounge")
-        .single();
+        .limit(1);
 
-      if (!storeData) {
-        const { data: altStore } = await supabase.from("stores").select("*").limit(1).single();
-        storeData = altStore;
+      if (storeErr || !storeList || storeList.length === 0) {
+        setDebugError("Failed to fetch store from Supabase database.");
+        setLoading(false);
+        return;
       }
 
-      if (storeData) {
-        setStore(storeData);
-        setPhone(storeData.whatsapp_number || storeData.phone || "");
-        setCurrency(storeData.currency || "₦");
+      const storeData = storeList[0];
+      setStore(storeData);
+      setPhone(storeData.whatsapp_number || storeData.phone || "");
+      setCurrency(storeData.currency || "₦");
 
-        // 2. Fetch categories
-        const { data: catData } = await supabase
-          .from("categories")
-          .select("*")
-          .eq("store_id", storeData.id)
-          .order("created_at", { ascending: true });
-        setCategories(catData || []);
-        if (catData && catData.length > 0) setNewItemCategory(catData[0].id);
+      // 2. Fetch categories for this store
+      const { data: catData, error: catErr } = await supabase
+        .from("categories")
+        .select("*")
+        .eq("store_id", storeData.id)
+        .order("created_at", { ascending: true });
 
-        // 3. Fetch menu items
-        const { data: menuData } = await supabase
-          .from("menu_items")
-          .select("*, categories(name)")
-          .eq("store_id", storeData.id);
-        setItems(menuData || []);
+      if (catErr) console.warn("Category fetch error:", catErr.message);
+      setCategories(catData || []);
+      if (catData && catData.length > 0) setNewItemCategory(catData[0].id);
 
-        // 4. Fetch existing orders
-        const { data: orderData } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("store_id", storeData.id)
-          .order("created_at", { ascending: false });
-        setOrders(orderData || []);
+      // 3. Fetch menu items without forced table joins to avoid relational schema crashes
+      const { data: menuData, error: menuErr } = await supabase
+        .from("menu_items")
+        .select("*")
+        .eq("store_id", storeData.id);
 
-        // 5. Setup Supabase Realtime Subscription for incoming orders
-        const channel = supabase
-          .channel("realtime-orders")
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "orders",
-              filter: `store_id=eq.${storeData.id}`
-            },
-            (payload) => {
-              setOrders((prevOrders) => [payload.new, ...prevOrders]);
-              if (audioEnabled && audioRef.current) {
-                audioRef.current.play().catch(() => {});
-              }
+      if (menuErr) console.warn("Menu fetch error:", menuErr.message);
+      setItems(menuData || []);
+
+      // 4. Fetch existing orders
+      const { data: orderData, error: orderErr } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("store_id", storeData.id)
+        .order("created_at", { ascending: false });
+
+      if (orderErr) console.warn("Order fetch error:", orderErr.message);
+      setOrders(orderData || []);
+
+      // 5. Setup Realtime Listener
+      const channel = supabase
+        .channel("realtime-orders")
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "orders",
+            filter: `store_id=eq.${storeData.id}`
+          },
+          (payload) => {
+            setOrders((prev) => [payload.new, ...prev]);
+            if (audioEnabled && audioRef.current) {
+              audioRef.current.play().catch(() => {});
             }
-          )
-          .subscribe();
+          }
+        )
+        .subscribe();
 
-        return () => {
-          supabase.removeChannel(channel);
-        };
-      }
-    } catch (err) {
-      console.error("Dashboard initialization error:", err);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err: any) {
+      setDebugError(err.message || "Failed loading data");
     } finally {
       setLoading(false);
     }
@@ -139,7 +140,7 @@ export default function CompleteAdminDashboard() {
           is_available: true
         }
       ])
-      .select("*, categories(name)");
+      .select();
 
     if (!error && data) {
       setItems([...items, ...data]);
@@ -199,7 +200,7 @@ export default function CompleteAdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center font-sans">
-        <p className="text-gray-400 animate-pulse font-medium">Restoring Admin Dashboard...</p>
+        <p className="text-gray-400 animate-pulse font-medium">Connecting to Supabase Database...</p>
       </div>
     );
   }
@@ -212,7 +213,12 @@ export default function CompleteAdminDashboard() {
     <div className="min-h-screen bg-black text-white p-4 md:p-8 font-sans">
       <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* Top Header */}
+        {debugError && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs">
+            {debugError}
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800 backdrop-blur-md">
           <div>
             <h1 className="text-2xl font-bold uppercase tracking-wider text-orange-500">
@@ -241,7 +247,6 @@ export default function CompleteAdminDashboard() {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="flex gap-2 border-b border-neutral-800 pb-3 overflow-x-auto">
           {[
             { id: "orders", label: `Live Orders (${orders.length})` },
@@ -264,7 +269,6 @@ export default function CompleteAdminDashboard() {
           ))}
         </div>
 
-        {/* TAB 1: LIVE ORDERS */}
         {activeTab === "orders" && (
           <div className="space-y-4">
             {orders.length === 0 ? (
@@ -295,7 +299,6 @@ export default function CompleteAdminDashboard() {
           </div>
         )}
 
-        {/* TAB 2: MENU ITEMS */}
         {activeTab === "menu" && (
           <div className="space-y-6">
             <form onSubmit={handleAddItem} className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 space-y-4">
@@ -370,20 +373,13 @@ export default function CompleteAdminDashboard() {
               </div>
 
               {filteredItems.length === 0 ? (
-                <p className="text-xs text-neutral-500">No menu items found for this filter.</p>
+                <p className="text-xs text-neutral-500">No menu items found.</p>
               ) : (
                 <div className="space-y-3">
                   {filteredItems.map((item) => (
                     <div key={item.id} className="flex justify-between items-center p-4 bg-black/60 rounded-xl border border-neutral-800/80">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-white">{item.title}</p>
-                          {item.categories?.name && (
-                            <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-md border border-neutral-700">
-                              {item.categories.name}
-                            </span>
-                          )}
-                        </div>
+                        <p className="text-sm font-semibold text-white">{item.title}</p>
                         <p className="text-xs text-orange-400 font-bold mt-0.5">{currency}{item.price}</p>
                         {item.description && <p className="text-xs text-neutral-500 mt-0.5">{item.description}</p>}
                       </div>
@@ -413,7 +409,6 @@ export default function CompleteAdminDashboard() {
           </div>
         )}
 
-        {/* TAB 3: CATEGORIES */}
         {activeTab === "categories" && (
           <div className="space-y-6">
             <form onSubmit={handleAddCategory} className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 flex gap-3">
@@ -434,7 +429,7 @@ export default function CompleteAdminDashboard() {
             </form>
 
             <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 space-y-3">
-              <h2 className="text-sm font-bold text-neutral-300">Existing Categories</h2>
+              <h2 className="text-sm font-bold text-neutral-300">Existing Categories ({categories.length})</h2>
               {categories.length === 0 ? (
                 <p className="text-xs text-neutral-500">No categories created yet.</p>
               ) : (
@@ -450,7 +445,6 @@ export default function CompleteAdminDashboard() {
           </div>
         )}
 
-        {/* TAB 4: TABLE QR GENERATOR */}
         {activeTab === "qr" && (
           <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 space-y-4">
             <h2 className="text-sm font-bold text-neutral-300">Generate Table QR Code</h2>
@@ -474,7 +468,6 @@ export default function CompleteAdminDashboard() {
           </div>
         )}
 
-        {/* TAB 5: STORE SETTINGS */}
         {activeTab === "settings" && (
           <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 space-y-4">
             <h2 className="text-sm font-bold text-neutral-300">Store Configuration</h2>
