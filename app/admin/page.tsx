@@ -149,46 +149,51 @@ export default function AdminControlPanel() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#090A0C] text-white flex items-center justify-center font-sans">
-        <div className="animate-pulse text-amber-500 font-bold">Loading Control Panel...</div>
+      <div className="min-h-screen bg-[#07080a] text-white flex items-center justify-center font-sans">
+        <div className="flex items-center gap-3 bg-[#111318] px-6 py-4 rounded-2xl border border-neutral-800 shadow-xl">
+          <div className="w-4 h-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+          <span className="text-amber-500 font-bold text-xs tracking-wider uppercase">Loading Control Panel...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#090A0C] text-white p-6 md:p-10 font-sans">
+    <div className="min-h-screen bg-[#07080a] text-white p-6 md:p-10 font-sans selection:bg-amber-500 selection:text-black">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {newOrderAlert && (
-          <div className="bg-amber-500 text-black font-black p-4 rounded-2xl text-center text-sm shadow-2xl animate-pulse">
-            {newOrderAlert}
+          <div className="bg-gradient-to-r from-amber-500 to-amber-400 text-black font-black p-4 rounded-2xl text-center text-xs tracking-wide shadow-2xl shadow-amber-500/20 animate-pulse flex items-center justify-center gap-2">
+            <span>{newOrderAlert}</span>
           </div>
         )}
 
         {/* Top Header Navigation */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-neutral-800/80 pb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-amber-500 tracking-wide uppercase">
-              ADMIN CONTROL PANEL
-            </h1>
-            <p className="text-xs text-neutral-400 mt-1">Manage Menu Items & Prices</p>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 tracking-tight uppercase">
+                ADMIN CONTROL PANEL
+              </h1>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1 font-medium">Manage Menu Items, Live Orders & QR Codes</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 bg-[#121418] p-1.5 rounded-2xl border border-neutral-800">
-            {/* Direct Link to Customer Menu */}
+          <div className="flex flex-wrap items-center gap-2 bg-[#101216] p-1.5 rounded-2xl border border-neutral-800/90 shadow-inner">
             <a
               href="https://digital-menu-5rnq.vercel.app/menu"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl text-xs font-black bg-neutral-900 border border-neutral-700 text-amber-400 hover:text-amber-300 hover:border-amber-500 flex items-center gap-1.5 transition-all"
+              className="px-4 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-neutral-900 to-neutral-800 border border-neutral-700 text-amber-400 hover:text-amber-300 hover:border-amber-500/80 flex items-center gap-1.5 transition-all shadow-md hover:shadow-amber-500/10 active:scale-95"
             >
               🌐 CUSTOMER MENU ↗
             </a>
 
             <button
               onClick={() => setActiveTab("qr")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "qr" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                activeTab === "qr" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
             >
               Menu QR Code
@@ -196,8 +201,8 @@ export default function AdminControlPanel() {
 
             <button
               onClick={() => setActiveTab("items")}
-              className={`px-4 py-2 rounded-xl text-xs font-extrabold uppercase transition-all ${
-                activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/10" : "text-neutral-400 hover:text-white"
+              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${
+                activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
             >
               MENU ITEMS
@@ -205,8 +210,8 @@ export default function AdminControlPanel() {
 
             <button
               onClick={() => setActiveTab("orders")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "orders" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                activeTab === "orders" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
               }`}
             >
               LIVE ORDERS ({orders.length})
@@ -214,82 +219,112 @@ export default function AdminControlPanel() {
           </div>
         </div>
 
+        {/* Quick Stats Summary Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Total Dishes</p>
+            <p className="text-xl font-black text-amber-500">{items.length}</p>
+          </div>
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Restaurant Items</p>
+            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "restaurant").length}</p>
+          </div>
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Bar Drinks</p>
+            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "bar").length}</p>
+          </div>
+          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
+            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Hotel Services</p>
+            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "hotel").length}</p>
+          </div>
+        </div>
+
         {activeTab === "items" && (
           <div className="space-y-6">
             
-            {/* Section Category Navigator */}
-            <div className="flex items-center gap-2 bg-[#121418] p-2 rounded-2xl border border-neutral-800 w-fit">
-              {["ALL", "RESTAURANT", "BAR", "HOTEL"].map((sec) => (
-                <button
-                  key={sec}
-                  onClick={() => setSelectedSection(sec)}
-                  className={`px-5 py-2 rounded-xl text-xs font-black tracking-wider transition-all ${
-                    selectedSection === sec
-                      ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                      : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-                  }`}
-                >
-                  {sec}
-                </button>
-              ))}
-            </div>
+            {/* Filter & Controls Bar */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+              
+              {/* Section Category Tabs */}
+              <div className="flex items-center gap-1.5 bg-[#101216] p-1.5 rounded-2xl border border-neutral-800/90">
+                {["ALL", "RESTAURANT", "BAR", "HOTEL"].map((sec) => (
+                  <button
+                    key={sec}
+                    onClick={() => setSelectedSection(sec)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider transition-all active:scale-95 ${
+                      selectedSection === sec
+                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                        : "text-neutral-400 hover:text-white hover:bg-neutral-800/40"
+                    }`}
+                  >
+                    {sec}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
-                {selectedSection} MENU ITEMS ({filteredItems.length})
-              </h2>
-
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <input
-                  type="text"
-                  placeholder="Search menu items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-72 bg-[#121418] border border-neutral-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
-                />
+              {/* Search & Add Button */}
+              <div className="flex items-center gap-3 w-full lg:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <input
+                    type="text"
+                    placeholder="Search menu items..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#101216] border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500/60 transition-all"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="absolute right-3 top-2.5 text-xs text-neutral-400 hover:text-white">✕</button>
+                  )}
+                </div>
 
                 <button
                   onClick={handleOpenAddModal}
-                  className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all shadow-lg shadow-amber-500/10"
+                  className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs px-5 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all shadow-lg shadow-amber-500/20 active:scale-95"
                 >
-                  <span className="text-base font-bold">+</span> ADD NEW ITEM
+                  <span className="text-sm font-black">+</span> ADD ITEM
                 </button>
               </div>
             </div>
 
+            {/* Menu Items Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-[#121418] border border-neutral-800/80 rounded-2xl p-4 flex items-center justify-between gap-3 hover:border-neutral-700 transition-all"
+                  className="group bg-[#101216] hover:bg-[#14161c] border border-neutral-800/90 hover:border-amber-500/40 rounded-2xl p-4 flex items-center justify-between gap-3 transition-all duration-200 shadow-md hover:shadow-xl hover:shadow-black/50"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     <img
                       src={item.image_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300"}
                       alt={item.title}
-                      className="w-12 h-12 rounded-xl object-cover border border-neutral-800 flex-shrink-0"
+                      className="w-14 h-14 rounded-xl object-cover border border-neutral-800/90 flex-shrink-0 group-hover:scale-105 transition-transform"
                     />
-                    <div className="truncate">
-                      <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
-                      <span className="text-[10px] bg-neutral-900 border border-neutral-800 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
-                        {item.section || item.category || "Restaurant"}
-                      </span>
-                      <p className="text-xs font-extrabold text-amber-500 mt-1">
+                    <div className="truncate space-y-1">
+                      <h3 className="text-sm font-bold text-white truncate group-hover:text-amber-400 transition-colors">{item.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] bg-neutral-900 border border-neutral-800 text-amber-400 px-2 py-0.5 rounded-md font-extrabold uppercase tracking-wider">
+                          {item.section || item.category || "Restaurant"}
+                        </span>
+                      </div>
+                      <p className="text-xs font-black text-amber-500">
                         {store?.currency || "₦"}{item.price?.toLocaleString()}
                       </p>
                     </div>
                   </div>
 
+                  {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => handleOpenEditModal(item)}
-                      className="w-8 h-8 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-amber-500/50 text-neutral-400 hover:text-amber-500 flex items-center justify-center transition-all"
+                      title="Edit Item"
+                      className="w-9 h-9 rounded-xl bg-neutral-900/80 border border-neutral-800 hover:border-amber-500/50 text-neutral-400 hover:text-amber-400 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                     >
                       ✏️
                     </button>
                     <button
                       onClick={() => handleDeleteItem(item.id)}
-                      className="w-8 h-8 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-red-900/50 text-neutral-400 hover:text-red-500 flex items-center justify-center transition-all"
+                      title="Delete Item"
+                      className="w-9 h-9 rounded-xl bg-neutral-900/80 border border-neutral-800 hover:border-red-800/50 text-neutral-400 hover:text-red-400 flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                     >
                       🗑️
                     </button>
@@ -297,20 +332,27 @@ export default function AdminControlPanel() {
                 </div>
               ))}
             </div>
+
+            {filteredItems.length === 0 && (
+              <div className="text-center py-12 bg-[#101216] rounded-2xl border border-neutral-800/80 space-y-2">
+                <p className="text-sm text-neutral-400 font-bold">No menu items found</p>
+                <p className="text-xs text-neutral-600">Try changing your search term or category section filter.</p>
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === "orders" && (
           <div className="space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
+            <h2 className="text-xs font-black uppercase tracking-wider text-neutral-400">
               LIVE KITCHEN ORDERS ({orders.length})
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {orders.map((order) => (
-                <div key={order.id} className="bg-[#121418] border border-amber-500/30 p-5 rounded-2xl space-y-3">
+                <div key={order.id} className="bg-[#101216] border border-amber-500/30 p-5 rounded-2xl space-y-3 shadow-xl">
                   <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
                     <span className="text-xs font-black text-amber-500">TABLE #{order.table_number || "1"}</span>
-                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase">
+                    <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase">
                       {order.status || "Pending"}
                     </span>
                   </div>
@@ -334,38 +376,42 @@ export default function AdminControlPanel() {
         )}
 
         {activeTab === "qr" && (
-          <div className="bg-[#121418] p-8 rounded-2xl border border-neutral-800 text-center max-w-sm mx-auto space-y-4">
-            <h3 className="text-sm font-bold text-white">Table QR Code</h3>
-            <div className="bg-white p-4 rounded-xl inline-block">
-              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://digital-menu-5rnq.vercel.app/menu`)}`} alt="QR Code" className="w-40 h-40" />
+          <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-sm mx-auto space-y-4 shadow-2xl">
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">Table QR Code</h3>
+            <div className="bg-white p-4 rounded-2xl inline-block shadow-xl">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://digital-menu-5rnq.vercel.app/menu`)}`} alt="QR Code" className="w-44 h-44" />
             </div>
-            <p className="text-xs text-neutral-400">Scans directly open: <br/><span className="text-amber-500 font-bold">digital-menu-5rnq.vercel.app/menu</span></p>
+            <p className="text-xs text-neutral-400">Scans directly open customer menu: <br/><span className="text-amber-500 font-bold">digital-menu-5rnq.vercel.app/menu</span></p>
           </div>
         )}
 
       </div>
 
+      {/* Item Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleSaveItem} className="bg-[#121418] border border-neutral-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <h3 className="text-sm font-bold text-amber-500 uppercase">
-              {editingItem ? "Edit Menu Item" : "Add New Item"}
-            </h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <form onSubmit={handleSaveItem} className="bg-[#101216] border border-neutral-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <h3 className="text-xs font-black text-amber-500 uppercase tracking-wider">
+                {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
+              </h3>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-neutral-500 hover:text-white text-sm">✕</button>
+            </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-neutral-400 mb-1 block">Item Title</label>
-                <input type="text" placeholder="e.g. Peppered Goat Meat" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500" required />
+                <label className="text-neutral-400 mb-1 block font-bold">Item Title</label>
+                <input type="text" placeholder="e.g. Peppered Goat Meat" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 transition-all" required />
               </div>
 
               <div>
-                <label className="text-neutral-400 mb-1 block">Price (₦)</label>
-                <input type="number" placeholder="3500" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500" required />
+                <label className="text-neutral-400 mb-1 block font-bold">Price (₦)</label>
+                <input type="number" placeholder="3500" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 transition-all" required />
               </div>
 
               <div>
-                <label className="text-neutral-400 mb-1 block">Category Section (Bar, Restaurant, Hotel)</label>
-                <select value={section} onChange={(e) => setSection(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
+                <label className="text-neutral-400 mb-1 block font-bold">Category Section</label>
+                <select value={section} onChange={(e) => setSection(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 transition-all">
                   <option value="Restaurant">Restaurant</option>
                   <option value="Bar">Bar</option>
                   <option value="Hotel">Hotel</option>
@@ -373,16 +419,16 @@ export default function AdminControlPanel() {
               </div>
 
               <div>
-                <label className="text-neutral-400 mb-1 block">Image URL</label>
-                <input type="url" placeholder="https://..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500" />
+                <label className="text-neutral-400 mb-1 block font-bold">Image URL</label>
+                <input type="url" placeholder="https://..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500 transition-all" />
               </div>
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button type="submit" className="flex-1 bg-amber-500 text-black font-extrabold text-xs py-3 rounded-xl hover:bg-amber-400">
+              <button type="submit" className="flex-1 bg-gradient-to-r from-amber-500 to-amber-400 text-black font-black text-xs py-3 rounded-xl hover:from-amber-400 hover:to-amber-300 transition-all shadow-lg shadow-amber-500/20 active:scale-95">
                 Save Item
               </button>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="bg-neutral-800 text-neutral-300 text-xs px-4 rounded-xl">
+              <button type="button" onClick={() => setIsModalOpen(false)} className="bg-neutral-800 text-neutral-300 font-bold text-xs px-4 rounded-xl hover:bg-neutral-700 transition-all">
                 Cancel
               </button>
             </div>
