@@ -68,7 +68,7 @@ export default function AdminDashboard() {
       }
     } catch (e) {
       console.error(e);
-    } font-sans finally {
+    } finally {
       setLoadingOrders(false);
     }
   };
@@ -248,7 +248,6 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Actions: Complete, Cancel, or Delete */}
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-800/80">
                       {!isCompleted ? (
                         <button
