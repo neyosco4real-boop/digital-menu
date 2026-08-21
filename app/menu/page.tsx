@@ -87,20 +87,20 @@ export default function CustomerMenu() {
       quantity: ci.quantity,
     }));
 
-    // Cleaned payload matching your actual Supabase table columns
+    // Minimal payload matching default Supabase schema
     const payload = {
       table_number: String(tableNumber),
       items: formattedItems,
       total_price: Number(totalPrice),
-      status: "Pending",
+      status: "Pending"
     };
 
     try {
       const { error } = await supabase.from("orders").insert([payload]);
 
       if (error) {
-        console.error("Supabase Database Error:", error.message);
-        alert(`Order error: ${error.message}`);
+        console.error("Supabase Database Error:", error);
+        alert(`Order error: ${error.message} (${error.details || error.hint || 'Check DB schema'})`);
       } else {
         setCart([]);
         setOrderSuccess(true);
@@ -120,7 +120,6 @@ export default function CustomerMenu() {
       <div className="absolute top-1/3 -right-32 w-80 h-80 bg-amber-600/10 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="max-w-3xl mx-auto px-5 py-8 relative z-10 space-y-8">
-        {/* Luxury Header */}
         <div className="text-center space-y-3 pt-4 border-b border-neutral-800/80 pb-8 relative">
           <div className="inline-flex items-center gap-1.5 bg-neutral-900/90 border border-amber-500/30 px-3.5 py-1 rounded-full shadow-inner">
             <span className="text-amber-400 text-xs tracking-widest">★ ★ ★ ★ ★</span>
@@ -147,7 +146,6 @@ export default function CustomerMenu() {
           </div>
         )}
 
-        {/* Category Filters */}
         {categories.length > 1 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {categories.map((cat) => (
@@ -166,7 +164,6 @@ export default function CustomerMenu() {
           </div>
         )}
 
-        {/* Menu Items Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredItems.map((item) => {
             const inCart = cart.find((i) => i.id === item.id);
@@ -240,7 +237,6 @@ export default function CustomerMenu() {
         </div>
       </div>
 
-      {/* Floating Bottom Cart Bar */}
       {cart.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-lg bg-[#12141a]/95 backdrop-blur-xl border border-amber-500/50 p-4 rounded-3xl shadow-2xl shadow-amber-500/10 z-50 flex items-center justify-between gap-4">
           <div>
