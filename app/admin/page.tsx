@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -33,15 +33,92 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
+
+  // Audio Context Ref for synthesizing a clear chime/alarm sound
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const playNotificationSound = () => {
+    try {
+      if (!audioCtxRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        audioCtxRef.current = new AudioContextClass();
+      }
+
+      const ctx = audioCtxRef.current;
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      // Play double chime/bell frequency pattern for incoming orders
+      const now = ctx.currentTime;
+      
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, now); // A5 note
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.5);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(1318.51, now + 0.2); // E6 note
+      gain2.gain.setValueAtTime(0.4, now + 0.2);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.2);
+      osc2.stop(now + 0.8);
+
+    } catch (e) {
+      console.error("Audio play failed:", e);
+    }
+  };
+
+  const enableAudio = () => {
+    playNotificationSound();
+    setSoundEnabled(true);
+  };
 
   useEffect(() => {
     fetchOrders();
 
+    // Listen to real-time order insertions
     const channel = supabase
-      .channel("admin-orders-channel")
+      .channel("admin-orders-live-alarm")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          const newOrder = payload.new as Order;
+          const tableNum = newOrder.table_number || newOrder.table || "1";
+
+          // Play alarm sound
+          playNotificationSound();
+
+          // Show banner alert
+          setNewOrderAlert(`🔔 NEW ORDER RECEIVED FOR TABLE #${tableNum}!`);
+          setTimeout(() => setNewOrderAlert(null), 8000);
+
+          fetchOrders();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "orders" },
+        () => {
+          fetchOrders();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "orders" },
         () => {
           fetchOrders();
         }
@@ -116,6 +193,23 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0d0e12] text-white font-sans p-6 md:p-10 space-y-8">
+      {/* Top Banner for New Incoming Orders */}
+      {newOrderAlert && (
+        <div className="bg-amber-500 text-black font-black text-sm p-4 rounded-2xl shadow-2xl flex items-center justify-between border-2 border-amber-300 animate-bounce">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🔔</span>
+            <span>{newOrderAlert}</span>
+          </div>
+          <button
+            onClick={() => setNewOrderAlert(null)}
+            className="bg-black text-white px-3 py-1 rounded-xl text-xs font-bold"
+          >
+            DISMISS
+          </button>
+        </div>
+      )}
+
+      {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-800 pb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -125,38 +219,53 @@ export default function AdminDashboard() {
             </h1>
           </div>
           <p className="text-xs text-neutral-400 mt-1">
-            Manage Menu Items, Live Orders & QR Codes
+            Manage Menu Items, Live Orders & Real-time Kitchen Alerts
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-[#16181e] border border-neutral-800 p-1.5 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-2 bg-[#16181e] border border-neutral-800 p-1.5 rounded-2xl">
+          {/* Sound Toggle Button */}
+          <button
+            onClick={enableAudio}
+            className={`px-3 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+              soundEnabled
+                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                : "bg-amber-500 text-black shadow-lg shadow-amber-500/20 animate-pulse"
+            }`}
+          >
+            <span>{soundEnabled ? "🔊 ALARM ACTIVE" : "🔇 ENABLE SOUND"}</span>
+          </button>
+
           <a
             href="/menu"
             target="_blank"
             rel="noreferrer"
-            className="px-4 py-2 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
+            className="px-3 py-2 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
           >
             CUSTOMER MENU &rarr;
           </a>
+
           <button
             onClick={() => setActiveTab("qr")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === "qr" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
-            Menu QR Code
+            QR CODE
           </button>
+
           <button
             onClick={() => setActiveTab("items")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === "items" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
             MENU ITEMS
           </button>
+
           <button
             onClick={() => setActiveTab("orders")}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+            className={`px-3 py-2 rounded-xl text-xs font-black transition-all ${
               activeTab === "orders" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white"
             }`}
           >
