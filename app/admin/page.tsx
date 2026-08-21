@@ -21,6 +21,7 @@ export default function AdminControlPanel() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
+  const [section, setSection] = useState("Restaurant");
   const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
 
@@ -56,6 +57,7 @@ export default function AdminControlPanel() {
     setEditingItem(null);
     setTitle("");
     setPrice("");
+    setSection("Restaurant");
     setImageUrl("");
     setIsModalOpen(true);
   };
@@ -64,6 +66,7 @@ export default function AdminControlPanel() {
     setEditingItem(item);
     setTitle(item.title);
     setPrice(item.price.toString());
+    setSection(item.section || "Restaurant");
     setCategoryId(item.category_id || "");
     setImageUrl(item.image_url || "");
     setIsModalOpen(true);
@@ -77,6 +80,7 @@ export default function AdminControlPanel() {
       store_id: store.id,
       title,
       price: parseFloat(price),
+      section: section,
       category_id: categoryId || null,
       image_url: imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300"
     };
@@ -129,7 +133,6 @@ export default function AdminControlPanel() {
                 activeTab === "qr" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
               Menu QR Code
             </button>
 
@@ -139,7 +142,7 @@ export default function AdminControlPanel() {
                 activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/10" : "text-neutral-400 hover:text-white"
               }`}
             >
-              <span>🍴</span> MENU ITEMS
+              MENU ITEMS
             </button>
 
             <button
@@ -148,7 +151,7 @@ export default function AdminControlPanel() {
                 activeTab === "orders" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
-              <span>🛍️</span> LIVE ORDERS
+              LIVE ORDERS
             </button>
           </div>
         </div>
@@ -162,19 +165,16 @@ export default function AdminControlPanel() {
               </h2>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                {/* Search Bar */}
                 <div className="relative flex-1 sm:w-72">
-                  <svg className="w-4 h-4 absolute left-3.5 top-3 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                   <input
                     type="text"
                     placeholder="Search menu items..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#121418] border border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
+                    className="w-full bg-[#121418] border border-neutral-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
                   />
                 </div>
 
-                {/* Add New Item Button */}
                 <button
                   onClick={handleOpenAddModal}
                   className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition-all shadow-lg shadow-amber-500/10"
@@ -198,27 +198,30 @@ export default function AdminControlPanel() {
                       className="w-12 h-12 rounded-xl object-cover border border-neutral-800 flex-shrink-0"
                     />
                     <div className="truncate">
-                      <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
-                      <p className="text-xs font-extrabold text-amber-500 mt-0.5">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
+                      </div>
+                      <span className="text-[10px] bg-neutral-900 border border-neutral-800 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                        {item.section || "Restaurant"}
+                      </span>
+                      <p className="text-xs font-extrabold text-amber-500 mt-1">
                         {store?.currency || "₦"}{item.price?.toLocaleString()}
                       </p>
                     </div>
                   </div>
 
-                  {/* Edit and Delete Buttons */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() => handleOpenEditModal(item)}
                       className="w-8 h-8 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-amber-500/50 text-neutral-400 hover:text-amber-500 flex items-center justify-center transition-all"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                      ✏️
                     </button>
-
                     <button
                       onClick={() => handleDeleteItem(item.id)}
                       className="w-8 h-8 rounded-xl bg-neutral-900 border border-neutral-800 hover:border-red-900/50 text-neutral-400 hover:text-red-500 flex items-center justify-center transition-all"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      🗑️
                     </button>
                   </div>
                 </div>
@@ -227,14 +230,12 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Tab 2: Orders View */}
         {activeTab === "orders" && (
           <div className="bg-[#121418] p-8 rounded-2xl border border-neutral-800 text-center">
             <p className="text-neutral-400 text-xs">Live orders display module connected to kitchen.</p>
           </div>
         )}
 
-        {/* Tab 3: QR Code Generator */}
         {activeTab === "qr" && (
           <div className="bg-[#121418] p-8 rounded-2xl border border-neutral-800 text-center max-w-sm mx-auto space-y-4">
             <h3 className="text-sm font-bold text-white">Table QR Code</h3>
@@ -246,7 +247,7 @@ export default function AdminControlPanel() {
 
       </div>
 
-      {/* Modal Dialog for Adding / Editing Items */}
+      {/* Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form onSubmit={handleSaveItem} className="bg-[#121418] border border-neutral-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
@@ -266,9 +267,11 @@ export default function AdminControlPanel() {
               </div>
 
               <div>
-                <label className="text-neutral-400 mb-1 block">Category</label>
-                <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <label className="text-neutral-400 mb-1 block">Section Route (Bar, Restaurant, Hotel)</label>
+                <select value={section} onChange={(e) => setSection(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
+                  <option value="Bar">Bar</option>
+                  <option value="Restaurant">Restaurant</option>
+                  <option value="Hotel">Hotel</option>
                 </select>
               </div>
 
