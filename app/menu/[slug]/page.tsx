@@ -1,409 +1,237 @@
-'use client';
+"use client";
 
-import { useEffect, useState, use } from 'react';
-import Image from 'next/image';
-import { createClient } from '@supabase/supabase-js';
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'https://foikiiarpvflmfdamlcz.supabase.co';
-
-const supabaseAnonKey =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvaWtpaWFycHZmbG1mZGFtbGN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjM3NDYwNTAsImV4cCI6MjAzOTMyMjA1MH0.aj1iLuPjhXH51hbKUK8G0RLn7hIFNu2EJz66S5uY_ng';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  logo_url?: string | null;
-  whatsapp_phone: string;
-  currency: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  section: string;
-  tenant_id: string;
-}
-
-interface ItemVariant {
-  id: string;
-  item_id: string;
-  variant_label: string;
-  price: number;
-  tenant_id: string;
-}
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+);
 
 interface MenuItem {
   id: string;
-  title: string;
-  description: string | null;
-  base_price: number | null;
-  category_id: string | null;
-  image_url?: string | null;
-  tenant_id: string;
+  title?: string;
+  name?: string;
+  price: number;
+  category: string;
+  description?: string;
+  image_url?: string;
 }
 
-interface CartItem {
-  id: string;
-  title: string;
-  variantLabel?: string;
-  price: number;
+interface CartItem extends MenuItem {
   quantity: number;
 }
 
-export default function TenantMenuPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = use(params);
+export default function DynamicCustomerMenu() {
+  const params = useParams();
+  const slug = params?.slug as string;
 
-  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [variants, setVariants] = useState<ItemVariant[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('All');
-  const [tableNumber, setTableNumber] = useState('1');
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
   useEffect(() => {
-    async function loadTenantData() {
-      setLoading(true);
-      setFetchError(null);
+    fetchMenu();
+  }, []);
 
-      const { data: tenantData, error: tenantErr } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('slug', slug)
-        .single();
-
-      if (tenantErr || !tenantData) {
-        setFetchError('Venue not found. Please check the URL.');
-        setLoading(false);
-        return;
-      }
-
-      setTenant(tenantData as Tenant);
-
-      const [catRes, itemRes, varRes] = await Promise.all([
-        supabase.from('categories').select('*').eq('tenant_id', tenantData.id),
-        supabase.from('menu_items').select('*').eq('tenant_id', tenantData.id),
-        supabase.from('item_variants').select('*').eq('tenant_id', tenantData.id),
-      ]);
-
-      if (catRes.error || itemRes.error || varRes.error) {
-        setFetchError('Failed to load venue menu data.');
-      } else {
-        setCategories((catRes.data as Category[]) || []);
-        setMenuItems((itemRes.data as MenuItem[]) || []);
-        setVariants((varRes.data as ItemVariant[]) || []);
-      }
-
-      setLoading(false);
-    }
-
-    if (slug) {
-      loadTenantData();
-    }
-  }, [slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-3">
-          <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs text-zinc-500 font-medium">Loading menu...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (fetchError || !tenant) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="p-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-2xl text-center text-xs max-w-sm w-full">
-          <p className="font-bold text-sm">Menu Unavailable</p>
-          <p className="mt-2 text-zinc-400">{fetchError || 'Restaurant not found'}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const currencySymbol = tenant.currency || '₦';
-  const categoryMap = new Map(categories.map((c) => [c.id, c.section]));
-
-  const variantsByItemId = new Map<string, ItemVariant[]>();
-  variants.forEach((v) => {
-    const existing = variantsByItemId.get(v.item_id) || [];
-    existing.push(v);
-    variantsByItemId.set(v.item_id, existing);
-  });
-
-  const getCategoryFallbackEmoji = (categoryId: string | null) => {
-    const section = (categoryId ? categoryMap.get(categoryId) : 'Bar') || 'Bar';
-    switch (section.toLowerCase()) {
-      case 'restaurant':
-        return '🍽️';
-      case 'hotel':
-        return '🏨';
-      case 'bar':
-      default:
-        return '🍹';
-    }
+  const fetchMenu = async () => {
+    const { data } = await supabase.from("menu_items").select("*");
+    if (data) setMenuItems(data);
   };
 
-  const filteredItems = menuItems.filter((item) => {
-    const section =
-      (item.category_id ? categoryMap.get(item.category_id) : 'Bar') || 'Bar';
-    const matchesSection =
-      activeTab === 'All' ||
-      section.toLowerCase() === activeTab.toLowerCase();
+  const categories = [
+    { name: "All", icon: "✨" },
+    { name: "Restaurant", icon: "🍽️" },
+    { name: "Bar", icon: "🍸" },
+    { name: "Hotel", icon: "🏨" },
+  ];
 
-    const itemVariants = variantsByItemId.get(item.id) || [];
-    const variantMatches = itemVariants.some((v) =>
-      v.variant_label.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const matchesSearch =
-      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      variantMatches;
-
-    return matchesSection && matchesSearch;
-  });
-
-  const addToCart = (
-    itemId: string,
-    title: string,
-    price: number,
-    variantLabel?: string
-  ) => {
-    const cartId = variantLabel ? `${itemId}-${variantLabel}` : itemId;
-    setCart((prevCart) => {
-      const existing = prevCart.find((c) => c.id === cartId);
+  const addToCart = (item: MenuItem) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
       if (existing) {
-        return prevCart.map((c) =>
-          c.id === cartId ? { ...c, quantity: c.quantity + 1 } : c
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      return [
-        ...prevCart,
-        { id: cartId, title, variantLabel, price, quantity: 1 },
-      ];
+      return [...prev, { ...item, quantity: 1 }];
     });
   };
 
-  const updateQuantity = (cartId: string, delta: number) => {
-    setCart((prevCart) =>
-      prevCart
-        .map((item) => {
-          if (item.id === cartId) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[]
+  const removeFromCart = (itemId: string) => {
+    setCart((prev) =>
+      prev
+        .map((i) => (i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i))
+        .filter((i) => i.quantity > 0)
     );
   };
 
-  const cartTotal = cart.reduce(
+  const totalPrice = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleWhatsAppCheckout = () => {
-    if (cart.length === 0) return;
+  const filteredItems = menuItems.filter((item) => {
+    if (selectedCategory === "All") return true;
+    const cat = (item.category || "").trim().toLowerCase();
+    return cat === selectedCategory.toLowerCase();
+  });
 
-    let text = `*NEW ORDER - ${tenant.name.toUpperCase()} (TABLE ${tableNumber})*\n------------------------------\n`;
-    cart.forEach((item, index) => {
-      const sizeStr = item.variantLabel ? ` (${item.variantLabel})` : '';
-      text += `${index + 1}. *${item.title}${sizeStr}* x${item.quantity} - ${currencySymbol}${(
-        item.price * item.quantity
-      ).toLocaleString()}\n`;
-    });
-    text += `------------------------------\n*TOTAL:* ${currencySymbol}${cartTotal.toLocaleString()}\n\nPlease confirm my order!`;
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0 || submitting) return;
+    setSubmitting(true);
 
-    window.open(
-      `https://wa.me/${tenant.whatsapp_phone}?text=${encodeURIComponent(text)}`,
-      '_blank'
-    );
+    const formattedItems = cart.map((ci) => ({
+      id: ci.id,
+      title: ci.title || ci.name || "Menu Item",
+      price: ci.price,
+      quantity: ci.quantity,
+    }));
+
+    const payload = {
+      table_number: String(slug || "1"),
+      items: formattedItems,
+      total_price: Number(totalPrice),
+      status: "Pending",
+    };
+
+    try {
+      const { error } = await supabase.from("orders").insert([payload]);
+
+      if (error) {
+        console.error("Supabase Database Error:", error);
+        alert(`Order error: ${error.message}`);
+      } else {
+        setCart([]);
+        setOrderSuccess(true);
+        setTimeout(() => setOrderSuccess(false), 5000);
+      }
+    } catch (e: any) {
+      console.error("Unexpected submission error:", e);
+      alert("An unexpected error occurred while placing your order.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const currentUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/menu/${tenant.slug}?table=${tableNumber}`
-      : '';
-
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-    currentUrl
-  )}&color=d97706&bgcolor=18181b`;
-
-  const tabs = [
-    { name: 'All', icon: '✨' },
-    { name: 'Restaurant', icon: '🍽️' },
-    { name: 'Bar', icon: '🍹' },
-    { name: 'Hotel', icon: '🏨' },
-  ];
-
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans antialiased pb-28">
-      <div className="relative bg-gradient-to-b from-zinc-900 via-zinc-900/90 to-zinc-950 border-b border-zinc-800/80 pt-8 pb-6 px-4 text-center overflow-hidden">
-        <div className="relative z-10 max-w-md mx-auto">
-          {tenant.logo_url && !imageErrors['logo'] ? (
-            <div className="relative w-16 h-16 mx-auto mb-3 rounded-2xl overflow-hidden border border-zinc-800 shadow-lg">
-              <Image
-                src={tenant.logo_url}
-                alt={tenant.name}
-                fill
-                sizes="64px"
-                className="object-cover"
-                onError={() => setImageErrors((prev) => ({ ...prev, logo: true }))}
-              />
-            </div>
-          ) : (
-            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-0.5 shadow-lg shadow-amber-500/20">
-              <div className="w-full h-full bg-zinc-950 rounded-[14px] flex items-center justify-center font-extrabold text-amber-400 text-xl tracking-wider">
-                {tenant.name.substring(0, 2).toUpperCase()}
-              </div>
-            </div>
-          )}
+    <div className="min-h-screen bg-[#07080a] text-white font-sans relative overflow-hidden selection:bg-amber-500 selection:text-black pb-32">
+      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-amber-500/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/3 -right-32 w-80 h-80 bg-amber-600/10 blur-[100px] rounded-full pointer-events-none" />
 
-          <h1 className="text-2xl font-black tracking-tight text-white uppercase">
-            {tenant.name}
+      <div className="max-w-3xl mx-auto px-5 py-8 relative z-10 space-y-8">
+        <div className="text-center space-y-3 pt-4 border-b border-neutral-800/80 pb-8 relative">
+          <div className="inline-flex items-center gap-1.5 bg-neutral-900/90 border border-amber-500/30 px-3.5 py-1 rounded-full shadow-inner">
+            <span className="text-amber-400 text-xs tracking-widest">★ ★ ★ ★ ★</span>
+            <span className="text-[10px] font-black uppercase text-amber-300 tracking-wider ml-1">
+              LUXURY DINING
+            </span>
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight bg-gradient-to-r from-amber-200 via-amber-400 to-amber-600 bg-clip-text text-transparent drop-shadow-sm">
+            SUITE & TABLE SELECTION
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">Digital Menu</p>
 
-          <div className="flex items-center justify-center gap-2 mt-4 text-xs">
-            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-xl">
-              <span className="text-zinc-400">Table:</span>
-              <input
-                type="text"
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                className="w-8 bg-transparent text-amber-400 font-bold text-center focus:outline-none"
-              />
-            </div>
-
-            <button
-              onClick={() => setIsQRModalOpen(true)}
-              className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-xl font-bold flex items-center gap-1.5 transition-all"
-            >
-              <span>📷</span>
-              <span>QR Code</span>
-            </button>
+          <div className="flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-xs font-bold tracking-widest text-neutral-400 uppercase">
+              TABLE #{slug || "1"} • LIVE KITCHEN CONNECTED
+            </span>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-md mx-auto px-4 mt-4">
-        <div className="relative mb-4">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">🔍</span>
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 bg-zinc-900/80 border border-zinc-800 rounded-2xl focus:outline-none focus:border-amber-500/60 text-xs text-white"
-          />
-        </div>
+        {orderSuccess && (
+          <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-black p-4 rounded-2xl font-black text-center text-xs tracking-wider uppercase shadow-2xl animate-bounce border border-emerald-300">
+            ✨ YOUR ORDER HAS BEEN TRANSMITTED DIRECTLY TO THE KITCHEN!
+          </div>
+        )}
 
-        <div className="sticky top-2 z-30 mb-5 bg-zinc-950/80 backdrop-blur-xl p-1.5 rounded-2xl border border-zinc-800/80 shadow-2xl flex gap-1.5 overflow-x-auto">
-          {tabs.map((tab) => (
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {categories.map((cat) => (
             <button
-              key={tab.name}
-              onClick={() => setActiveTab(tab.name)}
-              className={`flex-1 min-w-[75px] py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                activeTab === tab.name
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 shadow-lg shadow-amber-500/20'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              key={cat.name}
+              onClick={() => setSelectedCategory(cat.name)}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border flex items-center gap-2 ${
+                selectedCategory.toLowerCase() === cat.name.toLowerCase()
+                  ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
+                  : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
               }`}
             >
-              <span>{tab.icon}</span>
-              <span>{tab.name}</span>
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
             </button>
           ))}
         </div>
 
-        <div className="space-y-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredItems.map((item) => {
-            const itemVariants = variantsByItemId.get(item.id) || [];
-            const hasImageError = imageErrors[item.id];
-
+            const inCart = cart.find((i) => i.id === item.id);
             return (
               <div
                 key={item.id}
-                className="p-4 bg-zinc-900/80 rounded-2xl border border-zinc-800/80 shadow-lg flex gap-3.5 items-center"
+                className="bg-[#12141a]/90 backdrop-blur-md border border-neutral-800/90 hover:border-amber-500/40 p-4 rounded-3xl transition-all duration-300 flex justify-between gap-4 shadow-xl group"
               >
-                <div className="relative w-16 h-16 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0 overflow-hidden flex items-center justify-center text-2xl">
-                  {item.image_url && !hasImageError ? (
-                    <Image
-                      src={item.image_url}
-                      alt={item.title}
-                      fill
-                      sizes="64px"
-                      className="object-cover"
-                      onError={() =>
-                        setImageErrors((prev) => ({ ...prev, [item.id]: true }))
-                      }
-                    />
-                  ) : (
-                    <span>{getCategoryFallbackEmoji(item.category_id)}</span>
-                  )}
-                </div>
+                {item.image_url && (
+                  <img
+                    src={item.image_url}
+                    alt={item.title || item.name}
+                    className="w-20 h-20 rounded-2xl object-cover border border-neutral-800 shrink-0 group-hover:scale-105 transition-transform duration-300"
+                  />
+                )}
 
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-white text-sm truncate">{item.title}</h3>
-                  {item.description && (
-                    <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{item.description}</p>
-                  )}
-
-                  {itemVariants.length === 0 && item.base_price !== null && (
-                    <div className="mt-2.5 pt-2 border-t border-zinc-800/80 flex justify-end items-center gap-2">
-                      <span className="font-bold text-amber-400 text-[11px]">
-                        {currencySymbol}{Number(item.base_price).toLocaleString()}
+                <div className="flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-black text-xs text-neutral-100 group-hover:text-amber-400 transition-colors">
+                        {item.title || item.name}
+                      </h3>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 shrink-0">
+                        {item.category || "Dishes"}
                       </span>
-                      <button
-                        onClick={() => addToCart(item.id, item.title, Number(item.base_price))}
-                        className="bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1 rounded-xl text-xs font-bold"
-                      >
-                        + Add
-                      </button>
                     </div>
-                  )}
 
-                  {itemVariants.length > 0 && (
-                    <div className="mt-2.5 pt-2 border-t border-zinc-800/80 space-y-1.5">
-                      {itemVariants.map((variant) => (
-                        <div key={variant.id} className="flex justify-between items-center text-xs">
-                          <span className="text-zinc-400 text-[11px]">{variant.variant_label}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-amber-400 text-[11px]">
-                              {currencySymbol}{Number(variant.price).toLocaleString()}
-                            </span>
-                            <button
-                              onClick={() => addToCart(item.id, item.title, Number(variant.price), variant.variant_label)}
-                              className="bg-amber-500 hover:bg-amber-400 text-zinc-950 px-3 py-1 rounded-xl text-xs font-bold"
-                            >
-                              + Add
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    {item.description && (
+                      <p className="text-[11px] text-neutral-400 line-clamp-2 mt-1 font-medium">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 pt-2 border-t border-neutral-800/60">
+                    <span className="font-black text-sm text-amber-400">
+                      ₦{(item.price || 0).toLocaleString()}
+                    </span>
+
+                    {inCart ? (
+                      <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-700 rounded-xl px-2 py-1">
+                        <button
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-amber-400 font-black text-xs px-1 hover:text-white"
+                        >
+                          -
+                        </button>
+                        <span className="text-xs font-black text-white px-1">
+                          {inCart.quantity}
+                        </span>
+                        <button
+                          onClick={() => addToCart(item)}
+                          className="text-amber-400 font-black text-xs px-1 hover:text-white"
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => addToCart(item)}
+                        className="bg-amber-500 hover:bg-amber-400 text-black text-[11px] font-black px-3.5 py-1.5 rounded-xl transition-all shadow-md active:scale-95"
+                      >
+                        + ADD
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -411,76 +239,28 @@ export default function TenantMenuPage({
         </div>
       </div>
 
-      {cartItemCount > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-40 max-w-md mx-auto">
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-zinc-950 font-extrabold p-3.5 rounded-2xl shadow-2xl flex items-center justify-between"
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="bg-zinc-950 text-amber-400 text-xs px-2.5 py-1 rounded-xl font-black">
-                {cartItemCount}
+      {cart.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-lg bg-[#12141a]/95 backdrop-blur-xl border border-amber-500/50 p-4 rounded-3xl shadow-2xl shadow-amber-500/10 z-50 flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">
+                {cart.reduce((a, b) => a + b.quantity, 0)} Selected Items
               </span>
-              <span className="text-xs uppercase">View Order</span>
             </div>
-            <span className="text-sm">{currencySymbol}{cartTotal.toLocaleString()} →</span>
+            <div className="text-base font-black text-amber-400">
+              ₦{totalPrice.toLocaleString()}
+            </div>
+          </div>
+
+          <button
+            onClick={handlePlaceOrder}
+            disabled={submitting}
+            className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-black text-xs tracking-wider uppercase px-6 py-3.5 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+          >
+            <span>{submitting ? "TRANSMITTING..." : "PLACE ORDER NOW"}</span>
+            <span>&rarr;</span>
           </button>
-        </div>
-      )}
-
-      {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end justify-center">
-          <div className="bg-zinc-900 border-t border-zinc-800 w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
-              <h2 className="font-extrabold text-white text-base">Your Order ({tenant.name})</h2>
-              <button onClick={() => setIsCartOpen(false)} className="text-zinc-400 bg-zinc-800 p-1.5 rounded-full text-xs">✕</button>
-            </div>
-
-            <div className="overflow-y-auto space-y-3 flex-1">
-              {cart.map((item) => (
-                <div key={item.id} className="flex items-center justify-between bg-zinc-950 p-3 rounded-2xl border border-zinc-800">
-                  <div>
-                    <h4 className="text-xs font-bold text-white">{item.title}</h4>
-                    {item.variantLabel && <span className="text-[10px] text-zinc-400">{item.variantLabel}</span>}
-                    <p className="text-xs font-semibold text-amber-400 mt-0.5">
-                      {currencySymbol}{(item.price * item.quantity).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 bg-zinc-900 p-1 rounded-xl">
-                    <button onClick={() => updateQuantity(item.id, -1)} className="w-6 h-6 bg-zinc-800 text-white font-bold text-xs rounded-lg">-</button>
-                    <span className="text-xs font-bold text-white">{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.id, 1)} className="w-6 h-6 bg-zinc-800 text-white font-bold text-xs rounded-lg">+</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="border-t border-zinc-800 pt-3 space-y-3">
-              <div className="flex justify-between text-sm font-extrabold text-white">
-                <span>Total</span>
-                <span className="text-amber-400">{currencySymbol}{cartTotal.toLocaleString()}</span>
-              </div>
-              <button
-                onClick={handleWhatsAppCheckout}
-                className="w-full bg-emerald-500 text-zinc-950 font-black py-3.5 rounded-2xl flex items-center justify-center gap-2 text-xs uppercase"
-              >
-                <span>💬</span>
-                <span>Send Order to WhatsApp</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isQRModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 max-w-xs w-full rounded-3xl p-6 text-center space-y-4">
-            <h3 className="font-extrabold text-white text-base">{tenant.name} QR</h3>
-            <div className="relative w-48 h-48 mx-auto">
-              <Image src={qrCodeUrl} alt="Table QR" fill unoptimized className="rounded-xl" />
-            </div>
-            <button onClick={() => setIsQRModalOpen(false)} className="w-full bg-zinc-800 text-white text-xs font-bold py-2.5 rounded-xl">Close</button>
-          </div>
         </div>
       )}
     </div>
