@@ -42,6 +42,7 @@ export default function AdminMenuManagement() {
   const handleCategoryChange = async (itemId: string, newCategory: string) => {
     setUpdatingId(itemId);
 
+    // Optimistic UI update
     setMenuItems((prev) =>
       prev.map((item) =>
         item.id === itemId ? { ...item, category: newCategory } : item
@@ -56,7 +57,7 @@ export default function AdminMenuManagement() {
     if (error) {
       console.error("Failed to update category:", error);
       alert(`Error updating category: ${error.message}`);
-      fetchMenuItems();
+      fetchMenuItems(); // Rollback on error
     }
 
     setUpdatingId(null);
@@ -71,6 +72,7 @@ export default function AdminMenuManagement() {
   return (
     <div className="min-h-screen bg-[#07080a] text-white p-6 md:p-10 font-sans">
       <div className="max-w-5xl mx-auto space-y-8">
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#12141a] p-6 rounded-3xl border border-neutral-800 shadow-2xl">
           <div>
             <h1 className="text-xl font-black tracking-widest text-amber-500 uppercase">
@@ -81,6 +83,7 @@ export default function AdminMenuManagement() {
             </p>
           </div>
 
+          {/* Filter Bar */}
           <div className="flex items-center gap-1.5 bg-[#090a0f] p-1.5 rounded-2xl border border-neutral-800">
             {["All", ...categories].map((cat) => (
               <button
@@ -98,6 +101,7 @@ export default function AdminMenuManagement() {
           </div>
         </div>
 
+        {/* Menu Items List */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredItems.map((item) => (
             <div
@@ -133,6 +137,7 @@ export default function AdminMenuManagement() {
                 </div>
               </div>
 
+              {/* Inline Category Switcher Dropdown */}
               <div className="shrink-0 flex flex-col items-end gap-1">
                 <label className="text-[9px] font-black uppercase tracking-wider text-neutral-400">
                   Category
