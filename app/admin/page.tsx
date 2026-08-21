@@ -25,8 +25,8 @@ export default function CompleteAdminDashboard() {
   const [newItemDesc, setNewItemDesc] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("");
 
-  // Category state with Image URL
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategorySection, setNewCategorySection] = useState("Main");
   const [newCategoryImageUrl, setNewCategoryImageUrl] = useState("");
 
   const [tableNum, setTableNum] = useState("1");
@@ -85,6 +85,7 @@ export default function CompleteAdminDashboard() {
         { 
           store_id: store.id, 
           name: newCategoryName,
+          section: newCategorySection || "Main",
           image_url: newCategoryImageUrl || null 
         }
       ])
@@ -100,7 +101,7 @@ export default function CompleteAdminDashboard() {
   };
 
   const deleteCategory = async (id: string) => {
-    if (!confirm("Delete this category? Items under this category will become uncategorized.")) return;
+    if (!confirm("Delete this category?")) return;
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (!error) setCategories(categories.filter((c) => c.id !== id));
   };
@@ -117,7 +118,6 @@ export default function CompleteAdminDashboard() {
     <div className="min-h-screen bg-black text-white p-4 md:p-8 font-sans">
       <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* Header Navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-neutral-900/90 p-6 rounded-2xl border border-neutral-800">
           <div>
             <h1 className="text-2xl font-bold uppercase tracking-wider text-orange-500">
@@ -127,7 +127,6 @@ export default function CompleteAdminDashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2 border-b border-neutral-800 pb-3 overflow-x-auto">
           {[
             { id: "orders", label: `Live Orders (${orders.length})` },
@@ -150,12 +149,11 @@ export default function CompleteAdminDashboard() {
           ))}
         </div>
 
-        {/* CATEGORIES TAB WITH IMAGE SUPPORT */}
         {activeTab === "categories" && (
           <div className="space-y-6">
             <form onSubmit={handleAddCategory} className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800 space-y-4">
               <h2 className="text-sm font-bold text-neutral-300">Add New Category</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input
                   type="text"
                   placeholder="Category Name (e.g. Cocktails, Grills)"
@@ -165,8 +163,15 @@ export default function CompleteAdminDashboard() {
                   required
                 />
                 <input
+                  type="text"
+                  placeholder="Section (e.g. Drinks, Food)"
+                  value={newCategorySection}
+                  onChange={(e) => setNewCategorySection(e.target.value)}
+                  className="bg-black border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
+                />
+                <input
                   type="url"
-                  placeholder="Image URL (e.g. https://images.unsplash.com/...)"
+                  placeholder="Image URL (Optional)"
                   value={newCategoryImageUrl}
                   onChange={(e) => setNewCategoryImageUrl(e.target.value)}
                   className="bg-black border border-neutral-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500"
@@ -197,11 +202,14 @@ export default function CompleteAdminDashboard() {
                         />
                       ) : (
                         <div className="w-full h-32 bg-neutral-900 border-b border-neutral-800 flex items-center justify-center text-xs text-neutral-600">
-                          No Image Provided
+                          No Image
                         </div>
                       )}
                       <div className="p-4 flex justify-between items-center">
-                        <span className="text-sm font-semibold text-neutral-200">{cat.name}</span>
+                        <div>
+                          <p className="text-sm font-semibold text-neutral-200">{cat.name}</p>
+                          <span className="text-[10px] text-neutral-500 uppercase">{cat.section || "Main"}</span>
+                        </div>
                         <button
                           onClick={() => deleteCategory(cat.id)}
                           className="bg-neutral-800 hover:bg-red-900/50 text-neutral-400 hover:text-red-400 text-xs px-2.5 py-1 rounded-lg border border-neutral-700 transition"
