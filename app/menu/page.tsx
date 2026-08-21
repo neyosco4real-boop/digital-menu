@@ -107,7 +107,9 @@ function CustomerMenuContent() {
     }
   };
 
-  const categories = ["ALL", ...Array.from(new Set(items.map((i) => (i.section || i.category || "General").toUpperCase())))];
+  // Explicitly ensure RESTAURANT, BAR, and HOTEL are included alongside any custom dynamic categories
+  const dynamicCategories = items.map((i) => (i.section || i.category || "").toUpperCase()).filter(Boolean);
+  const categories = Array.from(new Set(["ALL", "RESTAURANT", "BAR", "HOTEL", ...dynamicCategories]));
 
   const filteredItems = items.filter((item) => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -182,7 +184,7 @@ function CustomerMenuContent() {
               Order directly from your phone
             </h2>
             <p className="text-xs text-neutral-400 max-w-sm">
-              Browse our menu, select your dishes, and place your order straight to Table #{tableParam}.
+              Browse our menu, select your dishes or hotel services, and place your order straight to Table #{tableParam}.
             </p>
           </div>
           <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
@@ -193,7 +195,7 @@ function CustomerMenuContent() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search food, drinks, desserts..."
+              placeholder="Search food, drinks, hotel services..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[#16181e] border border-neutral-800 rounded-2xl px-4 py-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500/80 transition-all shadow-inner"
@@ -238,7 +240,7 @@ function CustomerMenuContent() {
                     {item.title}
                   </h3>
                   <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed">
-                    {item.description || "Freshly prepared dish crafted with premium ingredients."}
+                    {item.description || "Freshly prepared dish or service crafted for your comfort."}
                   </p>
                 </div>
               </div>
