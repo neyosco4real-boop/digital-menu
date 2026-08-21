@@ -10,9 +10,9 @@ const supabase = createClient(
 
 export default function AdminControlPanel() {
   const [activeTab, setActiveTab] = useState<"items" | "orders" | "qr">("items");
+  const [selectedSection, setSelectedSection] = useState<string>("ALL");
   const [items, setItems] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
   const [store, setStore] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -24,13 +24,11 @@ export default function AdminControlPanel() {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [section, setSection] = useState("Restaurant");
-  const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
 
   useEffect(() => {
     fetchData();
 
-    // Supabase Realtime Subscription for New Orders
     const channel = supabase
       .channel("orders_channel")
       .on(
@@ -65,7 +63,7 @@ export default function AdminControlPanel() {
       osc.start();
       osc.stop(ctx.currentTime + 0.5);
     } catch (e) {
-      console.error("Audio playback error:", e);
+      console.error(e);
     }
   };
 
@@ -77,16 +75,13 @@ export default function AdminControlPanel() {
         setStore(storeList[0]);
         const sId = storeList[0].id;
 
-        const [itemRes, catRes, orderRes] = await Promise.all([
+        const [itemRes, orderRes] = await Promise.all([
           supabase.from("menu_items").select("*").eq("store_id", sId),
-          supabase.from("categories").select("*").eq("store_id", sId),
           supabase.from("orders").select("*").eq("store_id", sId).order("created_at", { ascending: false })
         ]);
 
         setItems(itemRes.data || []);
-        setCategories(catRes.data || []);
         setOrders(orderRes.data || []);
-        if (catRes.data?.[0]) setCategoryId(catRes.data[0].id);
       }
     } catch (e) {
       console.error(e);
@@ -108,8 +103,7 @@ export default function AdminControlPanel() {
     setEditingItem(item);
     setTitle(item.title);
     setPrice(item.price.toString());
-    setSection(item.section || "Restaurant");
-    setCategoryId(item.category_id || "");
+    setSection(item.section || item.category || "Restaurant");
     setImageUrl(item.image_url || "");
     setIsModalOpen(true);
   };
@@ -123,7 +117,7 @@ export default function AdminControlPanel() {
       title,
       price: parseFloat(price),
       section: section,
-      category_id: categoryId || null,
+      category: section.toLowerCase(),
       image_url: imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300"
     };
 
@@ -143,9 +137,12 @@ export default function AdminControlPanel() {
     if (!error) setItems(items.filter((i) => i.id !== id));
   };
 
-  const filteredItems = items.filter((item) =>
-    item.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = items.filter((item) => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const itemSec = (item.section || item.category || "").toUpperCase();
+    const matchesSection = selectedSection === "ALL" || itemSec === selectedSection;
+    return matchesSearch && matchesSection;
+  });
 
   if (loading) {
     return (
@@ -159,14 +156,13 @@ export default function AdminControlPanel() {
     <div className="min-h-screen bg-[#090A0C] text-white p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Realtime Order Alarm Banner */}
         {newOrderAlert && (
           <div className="bg-amber-500 text-black font-black p-4 rounded-2xl text-center text-sm shadow-2xl animate-pulse">
             {newOrderAlert}
           </div>
         )}
 
-        {/* Top Navigation Bar */}
+        {/* Top Header Navigation */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-amber-500 tracking-wide uppercase">
@@ -178,7 +174,7 @@ export default function AdminControlPanel() {
           <div className="flex items-center gap-2 bg-[#121418] p-1.5 rounded-2xl border border-neutral-800">
             <button
               onClick={() => setActiveTab("qr")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === "qr" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
@@ -187,7 +183,7 @@ export default function AdminControlPanel() {
 
             <button
               onClick={() => setActiveTab("items")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold uppercase transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold uppercase transition-all ${
                 activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/10" : "text-neutral-400 hover:text-white"
               }`}
             >
@@ -196,7 +192,7 @@ export default function AdminControlPanel() {
 
             <button
               onClick={() => setActiveTab("orders")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === "orders" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
@@ -205,24 +201,39 @@ export default function AdminControlPanel() {
           </div>
         </div>
 
-        {/* Tab 1: Menu Items Grid View */}
         {activeTab === "items" && (
           <div className="space-y-6">
+            
+            {/* Section Category Navigator */}
+            <div className="flex items-center gap-2 bg-[#121418] p-2 rounded-2xl border border-neutral-800 w-fit">
+              {["ALL", "RESTAURANT", "BAR", "HOTEL"].map((sec) => (
+                <button
+                  key={sec}
+                  onClick={() => setSelectedSection(sec)}
+                  className={`px-5 py-2 rounded-xl text-xs font-black tracking-wider transition-all ${
+                    selectedSection === sec
+                      ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
+                      : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
+                  }`}
+                >
+                  {sec}
+                </button>
+              ))}
+            </div>
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
-                ALL MENU ITEMS ({filteredItems.length})
+                {selectedSection} MENU ITEMS ({filteredItems.length})
               </h2>
 
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <div className="relative flex-1 sm:w-72">
-                  <input
-                    type="text"
-                    placeholder="Search menu items..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#121418] border border-neutral-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="Search menu items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full sm:w-72 bg-[#121418] border border-neutral-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50"
+                />
 
                 <button
                   onClick={handleOpenAddModal}
@@ -248,7 +259,7 @@ export default function AdminControlPanel() {
                     <div className="truncate">
                       <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
                       <span className="text-[10px] bg-neutral-900 border border-neutral-800 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
-                        {item.section || "Restaurant"}
+                        {item.section || item.category || "Restaurant"}
                       </span>
                       <p className="text-xs font-extrabold text-amber-500 mt-1">
                         {store?.currency || "₦"}{item.price?.toLocaleString()}
@@ -276,7 +287,6 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Tab 2: Orders View */}
         {activeTab === "orders" && (
           <div className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
@@ -295,7 +305,7 @@ export default function AdminControlPanel() {
                     {Array.isArray(order.items) &&
                       order.items.map((i: any, idx: number) => (
                         <div key={idx} className="flex justify-between text-neutral-300">
-                          <span>{i.quantity}x {i.title} <span className="text-[10px] text-neutral-500">({i.section || "Restaurant"})</span></span>
+                          <span>{i.quantity}x {i.title}</span>
                           <span className="font-bold">{store?.currency || "₦"}{(i.price * i.quantity).toLocaleString()}</span>
                         </div>
                       ))}
@@ -310,7 +320,6 @@ export default function AdminControlPanel() {
           </div>
         )}
 
-        {/* Tab 3: QR Code Generator */}
         {activeTab === "qr" && (
           <div className="bg-[#121418] p-8 rounded-2xl border border-neutral-800 text-center max-w-sm mx-auto space-y-4">
             <h3 className="text-sm font-bold text-white">Table QR Code</h3>
@@ -322,7 +331,6 @@ export default function AdminControlPanel() {
 
       </div>
 
-      {/* Modal Dialog */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form onSubmit={handleSaveItem} className="bg-[#121418] border border-neutral-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
