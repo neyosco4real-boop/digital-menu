@@ -53,6 +53,9 @@ function CustomerMenuContent() {
           .select("*")
           .eq("store_id", storeList[0].id);
         setItems(menuData || []);
+      } else {
+        const { data: menuData } = await supabase.from("menu_items").select("*");
+        setItems(menuData || []);
       }
     } catch (e) {
       console.error(e);
@@ -83,32 +86,45 @@ function CustomerMenuContent() {
   const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   const handlePlaceOrder = async () => {
-    if (cart.length === 0 || !store) return;
+    if (cart.length === 0) return;
     setOrderSubmitting(true);
     setOrderError(null);
 
-    try {
-      const orderPayload = {
-        store_id: store.id,
-        table_number: tableParam.toString(),
-        items: cart.map((i) => ({
-          id: i.id,
-          title: i.title,
-          price: i.price,
-          quantity: i.quantity,
-        })),
-        total_price: totalCartAmount,
-        status: "Pending",
-      };
+    const formattedItems = cart.map((i) => ({
+      id: i.id,
+      title: i.title,
+      price: i.price,
+      quantity: i.quantity,
+    }));
 
-      const { data, error } = await supabase
-        .from("orders")
-        .insert([orderPayload])
-        .select();
+    // Flexible payload matching standard Supabase orders schema without store_id
+    const primaryPayload = {
+      table_number: tableParam.toString(),
+      table: tableParam.toString(),
+      items: formattedItems,
+      total_price: totalCartAmount,
+      total: totalCartAmount,
+      status: "Pending",
+    };
+
+    try {
+      let { error } = await supabase.from("orders").insert([primaryPayload]);
+
+      // Fallback if table or total column names differ
+      if (error && error.code === "PGRST204") {
+        const fallbackPayload = {
+          table_number: tableParam.toString(),
+          items: formattedItems,
+          total_price: totalCartAmount,
+          status: "Pending",
+        };
+        const fallbackRes = await supabase.from("orders").insert([fallbackPayload]);
+        error = fallbackRes.error;
+      }
 
       if (error) {
-        console.error("Supabase Order Error:", error);
-        setOrderError(error.message || "Failed to submit order. Please try again.");
+        console.error("Order submit error:", error);
+        setOrderError(error.message);
       } else {
         setCart([]);
         setIsCartOpen(false);
@@ -117,7 +133,7 @@ function CustomerMenuContent() {
       }
     } catch (e: any) {
       console.error(e);
-      setOrderError(e?.message || "An unexpected error occurred.");
+      setOrderError(e?.message || "Failed to submit order.");
     } finally {
       setOrderSubmitting(false);
     }
@@ -184,7 +200,7 @@ function CustomerMenuContent() {
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         {orderSuccess && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-2xl text-center text-xs font-bold shadow-lg animate-fade-in flex items-center justify-center gap-2">
-            <span>✓ Order submitted successfully! Live kitchen alert sent for Table #{tableParam}.</span>
+            <span>✓ Order submitted! Live kitchen notification sent for Table #{tableParam}.</span>
           </div>
         )}
 
