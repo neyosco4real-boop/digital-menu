@@ -28,14 +28,35 @@ interface Order {
   created_at?: string;
 }
 
+interface MenuItem {
+  id: string;
+  title?: string;
+  name?: string;
+  price: number;
+  category: string;
+  description?: string;
+  image_url?: string;
+  available?: boolean;
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"orders" | "items" | "qr">("orders");
   const [orders, setOrders] = useState<Order[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Form State for Adding / Editing Menu Items
+  const [newItemTitle, setNewItemTitle] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
+  const [newItemCategory, setNewItemCategory] = useState("Dishes");
+  const [newItemDesc, setNewItemDesc] = useState("");
+  const [newItemImage, setNewItemImage] = useState("");
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -87,6 +108,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchOrders();
+    fetchMenuItems();
 
     const channel = supabase
       .channel("admin-orders-live-alarm")
@@ -147,6 +169,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchMenuItems = async () => {
+    setLoadingItems(true);
+    try {
+      const { data, error } = await supabase.from("menu_items").select("*");
+      if (error) {
+        console.error("Error fetching menu items:", error);
+      } else {
+        setMenuItems(data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
   const handleUpdateStatus = async (orderId: string, newStatus: "Completed" | "Cancelled") => {
     setUpdatingId(orderId);
     try {
@@ -184,6 +222,65 @@ export default function AdminDashboard() {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const handleSaveMenuItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItemTitle || !newItemPrice) return;
+
+    const payload = {
+      title: newItemTitle,
+      name: newItemTitle,
+      price: parseFloat(newItemPrice),
+      category: newItemCategory,
+      description: newItemDesc,
+      image_url: newItemImage,
+    };
+
+    if (editingItemId) {
+      const { error } = await supabase
+        .from("menu_items")
+        .update(payload)
+        .eq("id", editingItemId);
+
+      if (!error) {
+        setMenuItems((prev) =>
+          prev.map((i) => (i.id === editingItemId ? { ...i, ...payload } : i))
+        );
+        resetMenuForm();
+      }
+    } else {
+      const { data, error } = await supabase.from("menu_items").insert([payload]).select();
+      if (!error && data) {
+        setMenuItems((prev) => [...prev, data[0]]);
+        resetMenuForm();
+      }
+    }
+  };
+
+  const handleEditItem = (item: MenuItem) => {
+    setEditingItemId(item.id);
+    setNewItemTitle(item.title || item.name || "");
+    setNewItemPrice(String(item.price));
+    setNewItemCategory(item.category || "Dishes");
+    setNewItemDesc(item.description || "");
+    setNewItemImage(item.image_url || "");
+  };
+
+  const handleDeleteMenuItem = async (itemId: string) => {
+    const { error } = await supabase.from("menu_items").delete().eq("id", itemId);
+    if (!error) {
+      setMenuItems((prev) => prev.filter((i) => i.id !== itemId));
+    }
+  };
+
+  const resetMenuForm = () => {
+    setEditingItemId(null);
+    setNewItemTitle("");
+    setNewItemPrice("");
+    setNewItemCategory("Dishes");
+    setNewItemDesc("");
+    setNewItemImage("");
   };
 
   const pendingOrders = orders.filter((o) => o.status === "Pending" || !o.status);
@@ -263,7 +360,7 @@ export default function AdminDashboard() {
               activeTab === "items" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
             }`}
           >
-            MENU ITEMS
+            MENU ITEMS ({menuItems.length})
           </button>
 
           <button
@@ -277,6 +374,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* LIVE ORDERS TAB */}
       {activeTab === "orders" && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -390,6 +488,180 @@ export default function AdminDashboard() {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* MENU ITEMS MANAGEMENT TAB */}
+      {activeTab === "items" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Add / Edit Form */}
+          <div className="bg-[#16181e] border border-neutral-800 rounded-3xl p-6 space-y-4 h-fit">
+            <h2 className="text-sm font-black text-amber-400 uppercase tracking-wider">
+              {editingItemId ? "EDIT MENU ITEM" : "ADD NEW MENU ITEM"}
+            </h2>
+
+            <form onSubmit={handleSaveMenuItem} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-neutral-400 font-bold mb-1">ITEM TITLE</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Jollof Rice Special"
+                  value={newItemTitle}
+                  onChange={(e) => setNewItemTitle(e.target.value)}
+                  className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">PRICE (₦)</label>
+                  <input
+                    type="number"
+                    required
+                    placeholder="3500"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
+                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-neutral-400 font-bold mb-1">CATEGORY</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Dishes, Drinks"
+                    value={newItemCategory}
+                    onChange={(e) => setNewItemCategory(e.target.value)}
+                    className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-neutral-400 font-bold mb-1">IMAGE URL</label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={newItemImage}
+                  onChange={(e) => setNewItemImage(e.target.value)}
+                  className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-400 font-bold mb-1">DESCRIPTION</label>
+                <textarea
+                  rows={3}
+                  placeholder="Item details..."
+                  value={newItemDesc}
+                  onChange={(e) => setNewItemDesc(e.target.value)}
+                  className="w-full bg-[#0d0e12] border border-neutral-800 rounded-xl p-3 text-white focus:border-amber-500 outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-black py-3 rounded-xl transition-all shadow-lg active:scale-95"
+                >
+                  {editingItemId ? "SAVE CHANGES" : "+ ADD TO MENU"}
+                </button>
+                {editingItemId && (
+                  <button
+                    type="button"
+                    onClick={resetMenuForm}
+                    className="px-4 bg-neutral-800 hover:bg-neutral-700 text-white font-bold rounded-xl"
+                  >
+                    CANCEL
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Menu Items List */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-sm font-black text-neutral-400 uppercase tracking-wider">
+              CURRENT MENU ITEMS ({menuItems.length})
+            </h2>
+
+            {loadingItems ? (
+              <div className="text-xs text-neutral-500">Loading items...</div>
+            ) : menuItems.length === 0 ? (
+              <div className="bg-[#16181e] border border-neutral-800 rounded-3xl p-8 text-center text-xs text-neutral-500">
+                No menu items created yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {menuItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-[#16181e] border border-neutral-800 rounded-2xl p-4 flex gap-4 justify-between"
+                  >
+                    {item.image_url && (
+                      <img
+                        src={item.image_url}
+                        alt={item.title || item.name}
+                        className="w-16 h-16 rounded-xl object-cover border border-neutral-800 shrink-0"
+                      />
+                    )}
+                    <div className="flex-1 flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black text-white">{item.title || item.name}</h3>
+                          <span className="text-[10px] font-bold text-amber-500 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full">
+                            {item.category}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-amber-400 font-bold mt-1">
+                          ₦{(item.price || 0).toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2 mt-3 pt-2 border-t border-neutral-800">
+                        <button
+                          onClick={() => handleEditItem(item)}
+                          className="text-[10px] font-bold bg-neutral-800 hover:bg-neutral-700 text-amber-400 px-3 py-1 rounded-lg"
+                        >
+                          EDIT
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMenuItem(item)}
+                          className="text-[10px] font-bold bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1 rounded-lg transition-colors"
+                        >
+                          DELETE
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* QR CODE GENERATOR TAB */}
+      {activeTab === "qr" && (
+        <div className="bg-[#16181e] border border-neutral-800 rounded-3xl p-8 max-w-xl mx-auto text-center space-y-6">
+          <h2 className="text-sm font-black text-amber-500 uppercase tracking-widest">
+            SUITE / TABLE QR CODE GENERATOR
+          </h2>
+          <p className="text-xs text-neutral-400">
+            Generate printable direct QR codes for table ordering.
+          </p>
+          <div className="bg-white p-6 rounded-2xl inline-block shadow-2xl">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                typeof window !== "undefined" ? `${window.location.origin}/menu?table=1` : ""
+              )}`}
+              alt="Table QR Code"
+              className="w-48 h-48 mx-auto"
+            />
+          </div>
+          <div className="text-xs font-bold text-amber-400">TABLE / SUITE #1</div>
         </div>
       )}
     </div>
