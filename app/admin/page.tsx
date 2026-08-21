@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -8,37 +8,43 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
-function AdminContent() {
-  const [activeTab, setActiveTab] = useState<string>("items");
-  const [selectedSection, setSelectedSection] = useState<string>("ALL");
-  const [selectedTable, setSelectedTable] = useState<number>(1);
-  const [items, setItems] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [store, setStore] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
+interface OrderItem {
+  id?: string;
+  title?: string;
+  name?: string;
+  price?: number;
+  quantity?: number;
+}
 
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [section, setSection] = useState("Restaurant");
-  const [imageUrl, setImageUrl] = useState("");
+interface Order {
+  id: string;
+  table_number?: string;
+  table?: string;
+  items?: OrderItem[] | any;
+  total_price?: number;
+  total?: number;
+  amount?: number;
+  status: string;
+  created_at?: string;
+}
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState<"orders" | "items" | "qr">("orders");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchData();
+    fetchOrders();
 
+    // Subscribe to live order updates via Supabase Realtime
     const channel = supabase
-      .channel("orders_channel")
+      .channel("admin-orders-channel")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "orders" },
-        (payload) => {
-          setOrders((prev) => [payload.new, ...prev]);
-          playOrderSound();
-          setNewOrderAlert(`NEW ORDER RECEIVED FOR TABLE ${payload.new.table_number || "1"}!`);
-          setTimeout(() => setNewOrderAlert(null), 6000);
+        { event: "*", schema: "public", table: "orders" },
+        () => {
+          fetchOrders();
         }
       )
       .subscribe();
@@ -48,451 +54,216 @@ function AdminContent() {
     };
   }, []);
 
-  const playOrderSound = () => {
+  const fetchOrders = async () => {
+    setLoadingOrders(true);
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-      gain.gain.setValueAtTime(0.5, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.5);
-    } catch (e) {
-      console.error(e);
-    }
-  };
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const { data: storeList } = await supabase.from("stores").select("*").limit(1);
-      if (storeList && storeList.length > 0) {
-        setStore(storeList[0]);
-        const sId = storeList[0].id;
-
-        const [itemRes, orderRes] = await Promise.all([
-          supabase.from("menu_items").select("*").eq("store_id", sId),
-          supabase.from("orders").select("*").eq("store_id", sId).order("created_at", { ascending: false })
-        ]);
-
-        setItems(itemRes.data || []);
-        setOrders(orderRes.data || []);
+      if (error) {
+        console.error("Error fetching orders:", error);
+      } else {
+        setOrders(data || []);
       }
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      setLoadingOrders(false);
     }
   };
 
-  const handleOpenAddModal = () => {
-    setEditingItem(null);
-    setTitle("");
-    setPrice("");
-    setSection("Restaurant");
-    setImageUrl("");
-    setIsModalOpen(true);
-  };
+  const handleUpdateStatus = async (orderId: string, newStatus: "Completed" | "Cancelled") => {
+    setUpdatingId(orderId);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: newStatus })
+        .eq("id", orderId);
 
-  const handleOpenEditModal = (item: any) => {
-    setEditingItem(item);
-    setTitle(item.title);
-    setPrice(item.price.toString());
-    setSection(item.section || item.category || "Restaurant");
-    setImageUrl(item.image_url || "");
-    setIsModalOpen(true);
-  };
-
-  const handleSaveItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!store) return;
-
-    const payload = {
-      store_id: store.id,
-      title,
-      price: parseFloat(price),
-      section: section,
-      category: section.toLowerCase(),
-      image_url: imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300"
-    };
-
-    if (editingItem) {
-      const { error } = await supabase.from("menu_items").update(payload).eq("id", editingItem.id);
-      if (!error) fetchData();
-    } else {
-      const { error } = await supabase.from("menu_items").insert([payload]);
-      if (!error) fetchData();
+      if (error) {
+        console.error("Failed to update order status:", error);
+      } else {
+        setOrders((prev) =>
+          prev.map((ord) => (ord.id === orderId ? { ...ord, status: newStatus } : ord))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdatingId(null);
     }
-    setIsModalOpen(false);
   };
 
-  const handleDeleteItem = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this menu item?")) return;
-    const { error } = await supabase.from("menu_items").delete().eq("id", id);
-    if (!error) setItems(items.filter((i) => i.id !== id));
-  };
-
-  const filteredItems = items.filter((item) => {
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const itemSec = (item.section || item.category || "").toUpperCase();
-    const matchesSection = selectedSection === "ALL" || itemSec === selectedSection;
-    return matchesSearch && matchesSection;
-  });
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#07080a] text-white flex items-center justify-center font-sans">
-        <div className="flex items-center gap-3 bg-[#111318] px-6 py-4 rounded-2xl border border-neutral-800 shadow-xl">
-          <div className="w-4 h-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-          <span className="text-amber-500 font-bold text-xs tracking-wider uppercase">Loading Control Panel...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (activeTab === "qr") {
-    return (
-      <div className="min-h-screen bg-[#07080a] text-white p-6 font-sans flex items-center justify-center">
-        <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md w-full space-y-6 shadow-2xl relative">
-          <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
-            <button
-              onClick={() => setActiveTab("items")}
-              className="bg-[#07080a] border border-neutral-800 hover:border-amber-500/50 text-neutral-300 hover:text-amber-400 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
-            >
-              &larr; Back
-            </button>
-            <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
-              QR GENERATOR
-            </span>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">Dynamic Table QR Generator</h3>
-            <p className="text-xs text-neutral-400 mt-1">Select or type a table number to generate a specific QR code</p>
-          </div>
-
-          <div className="space-y-3 bg-[#07080a] p-4 rounded-xl border border-neutral-800">
-            <div className="flex items-center justify-between gap-3">
-              <label className="text-xs font-bold text-neutral-300 uppercase">Table Number:</label>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                value={selectedTable}
-                onChange={(e) => setSelectedTable(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-20 bg-[#101216] border border-amber-500/50 rounded-lg px-3 py-1.5 text-center text-sm font-black text-amber-500 focus:outline-none focus:border-amber-400"
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-1.5 justify-center pt-2 border-t border-neutral-800/60">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setSelectedTable(num)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                    selectedTable === num
-                      ? "bg-amber-500 text-black font-black"
-                      : "bg-[#101216] text-neutral-400 border border-neutral-800 hover:text-white"
-                  }`}
-                >
-                  T-{num}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white p-5 rounded-2xl inline-block shadow-2xl relative group">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
-              )}`}
-              alt={`Table ${selectedTable} QR Code`}
-              className="w-48 h-48 mx-auto"
-            />
-            <div className="mt-2 pt-2 border-t border-neutral-200">
-              <span className="text-xs font-black text-neutral-900 uppercase tracking-widest">
-                TABLE #{selectedTable}
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="bg-[#07080a] px-4 py-2.5 rounded-xl border border-neutral-800 text-xs font-mono text-amber-400/90 truncate">
-              digital-menu-5rnq.vercel.app/menu?table={selectedTable}
-            </div>
-
-            <a
-              href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                `https://digital-menu-5rnq.vercel.app/menu?table=${selectedTable}`
-              )}`}
-              target="_blank"
-              download={`table-${selectedTable}-qr.png`}
-              rel="noopener noreferrer"
-              className="w-full bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-            >
-              DOWNLOAD TABLE {selectedTable} QR CODE
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const pendingOrders = orders.filter((o) => o.status === "Pending" || !o.status);
 
   return (
-    <div className="min-h-screen bg-[#07080a] text-white p-6 md:p-10 font-sans flex flex-col justify-center">
-      <div className="max-w-7xl mx-auto w-full space-y-8">
-        {newOrderAlert && (
-          <div className="bg-gradient-to-r from-amber-500 to-amber-400 text-black font-black p-4 rounded-2xl text-center text-xs tracking-wide shadow-2xl shadow-amber-500/20 animate-pulse flex items-center justify-center gap-2">
-            <span>{newOrderAlert}</span>
+    <div className="min-h-screen bg-[#0d0e12] text-white font-sans p-6 md:p-10 space-y-8">
+      {/* Top Navigation Bar */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-neutral-800 pb-6">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+            <h1 className="text-2xl font-black tracking-tight uppercase text-amber-500">
+              ADMIN CONTROL PANEL
+            </h1>
           </div>
-        )}
-
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-neutral-800/80 pb-6">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h1 className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 tracking-tight uppercase">
-                ADMIN CONTROL PANEL
-              </h1>
-            </div>
-            <p className="text-xs text-neutral-400 mt-1 font-medium">Manage Menu Items, Live Orders &amp; QR Codes</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 bg-[#101216] p-1.5 rounded-2xl border border-neutral-800/90 shadow-inner">
-            <a
-              href="https://digital-menu-5rnq.vercel.app/menu"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-neutral-900 to-neutral-800 border border-neutral-700 text-amber-400 hover:text-amber-300 hover:border-amber-500/80 flex items-center gap-1.5 transition-all shadow-md hover:shadow-amber-500/10 active:scale-95"
-            >
-              CUSTOMER MENU &rarr;
-            </a>
-
-            <button
-              onClick={() => setActiveTab("qr")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                activeTab === "qr" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-              }`}
-            >
-              Menu QR Code
-            </button>
-
-            <button
-              onClick={() => setActiveTab("items")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${
-                activeTab === "items" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-              }`}
-            >
-              MENU ITEMS
-            </button>
-
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
-                activeTab === "orders" ? "bg-amber-500 text-black font-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white hover:bg-neutral-800/50"
-              }`}
-            >
-              LIVE ORDERS ({orders.length})
-            </button>
-          </div>
+          <p className="text-xs text-neutral-400 mt-1">
+            Manage Menu Items, Live Orders & QR Codes
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Total Dishes</p>
-            <p className="text-xl font-black text-amber-500">{items.length}</p>
-          </div>
-          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Restaurant Items</p>
-            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "restaurant").length}</p>
-          </div>
-          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Bar Drinks</p>
-            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "bar").length}</p>
-          </div>
-          <div className="bg-[#101216] border border-neutral-800/80 p-4 rounded-2xl space-y-1">
-            <p className="text-[10px] uppercase tracking-wider font-bold text-neutral-400">Hotel Services</p>
-            <p className="text-xl font-black text-white">{items.filter(i => (i.section || i.category || "").toLowerCase() === "hotel").length}</p>
-          </div>
+        <div className="flex items-center gap-2 bg-[#16181e] border border-neutral-800 p-1.5 rounded-2xl">
+          <a
+            href="/menu"
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors"
+          >
+            CUSTOMER MENU &rarr;
+          </a>
+          <button
+            onClick={() => setActiveTab("qr")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "qr" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Menu QR Code
+          </button>
+          <button
+            onClick={() => setActiveTab("items")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "items" ? "bg-amber-500 text-black font-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            MENU ITEMS
+          </button>
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              activeTab === "orders" ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            LIVE ORDERS ({pendingOrders.length})
+          </button>
         </div>
-
-        {activeTab === "items" && (
-          <div className="space-y-6">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-              <div className="flex items-center gap-1.5 bg-[#101216] p-1.5 rounded-2xl border border-neutral-800/90">
-                {["ALL", "RESTAURANT", "BAR", "HOTEL"].map((sec) => (
-                  <button
-                    key={sec}
-                    onClick={() => setSelectedSection(sec)}
-                    className={`px-4 py-2 rounded-xl text-xs font-black tracking-wider transition-all active:scale-95 ${
-                      selectedSection === sec
-                        ? "bg-amber-500 text-black shadow-md shadow-amber-500/20"
-                        : "text-neutral-400 hover:text-white hover:bg-neutral-800/40"
-                    }`}
-                  >
-                    {sec}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center gap-3 w-full lg:w-auto">
-                <div className="relative w-full sm:w-72">
-                  <input
-                    type="text"
-                    placeholder="Search menu items..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#101216] border border-neutral-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500/60 transition-all"
-                  />
-                </div>
-
-                <button
-                  onClick={handleOpenAddModal}
-                  className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-black text-xs px-5 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap transition-all shadow-lg shadow-amber-500/20 active:scale-95"
-                >
-                  + ADD ITEM
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="group bg-[#101216] hover:bg-[#14161c] border border-neutral-800/90 hover:border-amber-500/40 rounded-2xl p-4 flex items-center justify-between gap-3 transition-all duration-200 shadow-md"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <img
-                      src={item.image_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=300"}
-                      alt={item.title}
-                      className="w-14 h-14 rounded-xl object-cover border border-neutral-800/90 flex-shrink-0"
-                    />
-                    <div className="truncate space-y-1">
-                      <h3 className="text-sm font-bold text-white truncate group-hover:text-amber-400 transition-colors">{item.title}</h3>
-                      <p className="text-xs font-black text-amber-500">
-                        {store?.currency || "₦"}{item.price?.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => handleOpenEditModal(item)}
-                      className="w-9 h-9 rounded-xl bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-amber-400 flex items-center justify-center transition-all"
-                    >
-                      EDIT
-                    </button>
-                    <button
-                      onClick={() => handleDeleteItem(item.id)}
-                      className="w-9 h-9 rounded-xl bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-red-400 flex items-center justify-center transition-all"
-                    >
-                      DEL
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === "orders" && (
-          <div className="space-y-4">
-            <h2 className="text-xs font-black uppercase tracking-wider text-neutral-400">
-              LIVE KITCHEN ORDERS ({orders.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {orders.map((order) => (
-                <div key={order.id} className="bg-[#101216] border border-amber-500/30 p-5 rounded-2xl space-y-3 shadow-xl">
-                  <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
-                    <span className="text-xs font-black text-amber-500">TABLE #{order.table_number || "1"}</span>
-                    <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase">
-                      {order.status || "Pending"}
-                    </span>
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    {Array.isArray(order.items) &&
-                      order.items.map((i: any, idx: number) => (
-                        <div key={idx} className="flex justify-between text-neutral-300">
-                          <span>{i.quantity}x {i.title}</span>
-                          <span className="font-bold">{store?.currency || "₦"}{(i.price * i.quantity).toLocaleString()}</span>
-                        </div>
-                      ))}
-                  </div>
-                  <div className="pt-2 border-t border-neutral-800 flex justify-between items-center text-xs font-bold">
-                    <span>Total:</span>
-                    <span className="text-amber-500">{store?.currency || "₦"}{order.total_price?.toLocaleString()}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleSaveItem} className="bg-[#101216] border border-neutral-800 p-6 rounded-2xl max-w-md w-full space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
-              <h3 className="text-xs font-black text-amber-500 uppercase tracking-wider">
-                {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
-              </h3>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="text-neutral-500 hover:text-white text-sm">✕</button>
+      {/* Orders Section */}
+      {activeTab === "orders" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-black tracking-widest text-neutral-400 uppercase">
+              LIVE KITCHEN ORDERS ({pendingOrders.length})
+            </h2>
+            <button
+              onClick={fetchOrders}
+              className="text-xs text-amber-500 font-bold hover:underline"
+            >
+              Refresh Orders
+            </button>
+          </div>
+
+          {loadingOrders ? (
+            <div className="py-12 text-center text-xs text-neutral-500 font-bold uppercase tracking-wider">
+              Syncing live orders...
             </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-neutral-400 mb-1 block font-bold">Item Title</label>
-                <input type="text" placeholder="e.g. Peppered Goat Meat" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500" required />
-              </div>
-
-              <div>
-                <label className="text-neutral-400 mb-1 block font-bold">Price (₦)</label>
-                <input type="number" placeholder="3500" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500" required />
-              </div>
-
-              <div>
-                <label className="text-neutral-400 mb-1 block font-bold">Category Section</label>
-                <select value={section} onChange={(e) => setSection(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
-                  <option value="Restaurant">Restaurant</option>
-                  <option value="Bar">Bar</option>
-                  <option value="Hotel">Hotel</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-neutral-400 mb-1 block font-bold">Image URL</label>
-                <input type="url" placeholder="https://..." value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full bg-[#07080a] border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500" />
-              </div>
+          ) : orders.length === 0 ? (
+            <div className="bg-[#16181e] border border-neutral-800/80 rounded-3xl p-12 text-center text-neutral-500 text-xs font-bold">
+              No live kitchen orders at the moment.
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {orders.map((order) => {
+                const tableNum = order.table_number || order.table || "1";
+                const totalAmt = order.total_price || order.total || order.amount || 0;
+                const itemsList: OrderItem[] = Array.isArray(order.items) ? order.items : [];
 
-            <div className="flex gap-2 pt-2">
-              <button type="submit" className="flex-1 bg-gradient-to-r from-amber-500 to-amber-400 text-black font-black text-xs py-3 rounded-xl hover:from-amber-400 hover:to-amber-300">
-                Save Item
-              </button>
-              <button type="button" onClick={() => setIsModalOpen(false)} className="bg-neutral-800 text-neutral-300 font-bold text-xs px-4 rounded-xl">
-                Cancel
-              </button>
+                const isCompleted = order.status === "Completed";
+                const isCancelled = order.status === "Cancelled";
+
+                return (
+                  <div
+                    key={order.id}
+                    className={`bg-[#16181e] border rounded-3xl p-5 flex flex-col justify-between gap-5 transition-all shadow-xl ${
+                      isCompleted
+                        ? "border-emerald-500/30 opacity-60"
+                        : isCancelled
+                        ? "border-red-500/30 opacity-50"
+                        : "border-amber-500/40 hover:border-amber-500/80"
+                    }`}
+                  >
+                    <div className="space-y-4">
+                      {/* Card Header */}
+                      <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+                        <span className="text-xs font-black tracking-wider text-amber-500 uppercase bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                          TABLE #{tableNum}
+                        </span>
+                        <span
+                          className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-md border ${
+                            isCompleted
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                              : isCancelled
+                              ? "bg-red-500/20 text-red-400 border-red-500/30"
+                              : "bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse"
+                          }`}
+                        >
+                          {order.status || "PENDING"}
+                        </span>
+                      </div>
+
+                      {/* Items List */}
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {itemsList.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs">
+                            <span className="text-neutral-200 font-medium truncate max-w-[200px]">
+                              <strong className="text-amber-400 mr-1">{item.quantity || 1}x</strong>
+                              {item.title || item.name || "Menu Item"}
+                            </span>
+                            <span className="text-neutral-400 font-bold">
+                              ₦{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Total Price */}
+                      <div className="flex justify-between items-center pt-3 border-t border-neutral-800 text-xs">
+                        <span className="font-bold text-neutral-400 uppercase">Total:</span>
+                        <span className="font-black text-amber-400 text-sm">
+                          ₦{totalAmt.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons: Complete & Cancel */}
+                    {!isCompleted && !isCancelled && (
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-800/80">
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "Completed")}
+                          disabled={updatingId === order.id}
+                          className="bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/40 text-emerald-400 hover:text-black font-black text-xs py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50"
+                        >
+                          ✓ COMPLETE
+                        </button>
+
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "Cancelled")}
+                          disabled={updatingId === order.id}
+                          className="bg-red-500/10 hover:bg-red-500 border border-red-500/40 text-red-400 hover:text-white font-black text-xs py-2.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50"
+                        >
+                          ✕ CANCEL
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </form>
+          )}
         </div>
       )}
     </div>
-  );
-}
-
-export default function AdminControlPanel() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#07080a] text-white flex items-center justify-center">
-        <div className="text-amber-500 font-bold text-xs">Loading Admin Panel...</div>
-      </div>
-    }>
-      <AdminContent />
-    </Suspense>
   );
 }
