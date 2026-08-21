@@ -30,6 +30,9 @@ export default function CustomerMenu() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
 
+  // Explicitly defined allowed categories to guarantee single buttons
+  const categories = ["All", "Restaurant", "Bar", "Hotel"];
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -69,34 +72,11 @@ export default function CustomerMenu() {
     0
   );
 
-  // Deep sanitize category strings to strip hidden whitespace and non-printable characters
-  const sanitizeCategory = (cat?: string) =>
-    (cat || "Dishes")
-      .replace(/[\u200B-\u200D\uFEFF]/g, "") // remove zero-width characters
-      .trim()
-      .replace(/\s+/g, " ");
-
-  const rawCategories = menuItems.map((i) => sanitizeCategory(i.category));
-
-  // Deduplicate case-insensitively while preserving original display title
-  const categoryMap = new Map<string, string>();
-  rawCategories.forEach((cat) => {
-    const key = cat.toUpperCase();
-    if (!categoryMap.has(key)) {
-      categoryMap.set(key, cat);
-    }
+  const filteredItems = menuItems.filter((item) => {
+    if (selectedCategory === "All") return true;
+    const cat = (item.category || "").trim().toLowerCase();
+    return cat === selectedCategory.toLowerCase();
   });
-
-  const categories = ["All", ...Array.from(categoryMap.values())];
-
-  const filteredItems =
-    selectedCategory.toUpperCase() === "ALL"
-      ? menuItems
-      : menuItems.filter(
-          (i) =>
-            sanitizeCategory(i.category).toUpperCase() ===
-            selectedCategory.toUpperCase()
-        );
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || submitting) return;
@@ -167,24 +147,22 @@ export default function CustomerMenu() {
           </div>
         )}
 
-        {/* Clean, Fully Deduplicated Category Bar */}
-        {categories.length > 1 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border ${
-                  selectedCategory.toUpperCase() === cat.toUpperCase()
-                    ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
-                    : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Strict Nav Tab List */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border ${
+                selectedCategory.toLowerCase() === cat.toLowerCase()
+                  ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
+                  : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredItems.map((item) => {
@@ -209,7 +187,7 @@ export default function CustomerMenu() {
                         {item.title || item.name}
                       </h3>
                       <span className="text-[9px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 shrink-0">
-                        {sanitizeCategory(item.category)}
+                        {item.category || "Dishes"}
                       </span>
                     </div>
 
