@@ -80,10 +80,18 @@ export default function CustomerMenu() {
     if (cart.length === 0 || submitting) return;
     setSubmitting(true);
 
+    const formattedItems = cart.map((ci) => ({
+      id: ci.id,
+      title: ci.title || ci.name || "Menu Item",
+      name: ci.title || ci.name || "Menu Item",
+      price: ci.price,
+      quantity: ci.quantity,
+    }));
+
     const payload = {
       table_number: String(tableNumber),
       table: String(tableNumber),
-      items: cart,
+      items: formattedItems,
       total_price: totalPrice,
       total: totalPrice,
       amount: totalPrice,
@@ -91,17 +99,23 @@ export default function CustomerMenu() {
       created_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from("orders").insert([payload]);
+    try {
+      const { error } = await supabase.from("orders").insert([payload]);
 
-    if (error) {
-      console.error("Order submission failed:", error);
-      alert("Failed to submit order. Please try again.");
-    } else {
-      setCart([]);
-      setOrderSuccess(true);
-      setTimeout(() => setOrderSuccess(false), 5000);
+      if (error) {
+        console.error("Order submission failed:", error);
+        alert("Order delivery failed. Please check network connection.");
+      } else {
+        setCart([]);
+        setOrderSuccess(true);
+        setTimeout(() => setOrderSuccess(false), 5000);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred while placing your order.");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (
@@ -249,7 +263,7 @@ export default function CustomerMenu() {
           <button
             onClick={handlePlaceOrder}
             disabled={submitting}
-            className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-black text-xs tracking-wider uppercase px-6 py-3.5 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center gap-2"
+            className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-black text-xs tracking-wider uppercase px-6 py-3.5 rounded-2xl transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
           >
             <span>{submitting ? "TRANSMITTING..." : "PLACE ORDER NOW"}</span>
             <span>&rarr;</span>
