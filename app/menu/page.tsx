@@ -87,7 +87,6 @@ export default function CustomerMenu() {
       quantity: ci.quantity,
     }));
 
-    // Minimal payload matching default Supabase schema
     const payload = {
       table_number: String(tableNumber),
       items: formattedItems,
@@ -100,7 +99,7 @@ export default function CustomerMenu() {
 
       if (error) {
         console.error("Supabase Database Error:", error);
-        alert(`Order error: ${error.message} (${error.details || error.hint || 'Check DB schema'})`);
+        alert(`Order error: ${error.message}`);
       } else {
         setCart([]);
         setOrderSuccess(true);
