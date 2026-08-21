@@ -374,7 +374,21 @@ export default function AdminControlPanel() {
         )}
 
         {activeTab === "qr" && (
-          <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md mx-auto space-y-6 shadow-2xl">
+          <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md mx-auto space-y-6 shadow-2xl relative">
+            
+            {/* Navigation Header with Back Button */}
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
+              <button
+                onClick={() => setActiveTab("items")}
+                className="bg-[#07080a] border border-neutral-800 hover:border-amber-500/50 text-neutral-300 hover:text-amber-400 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+              >
+                ← Back to Control Panel
+              </button>
+              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full">
+                QR GENERATOR
+              </span>
+            </div>
+
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-wider">Dynamic Table QR Generator</h3>
               <p className="text-xs text-neutral-400 mt-1">Select or type a table number to generate a specific QR code</p>
