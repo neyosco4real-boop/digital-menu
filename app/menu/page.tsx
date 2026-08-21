@@ -116,57 +116,64 @@ function CustomerMenuContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0e12] text-white font-sans p-4 md:p-8 max-w-4xl mx-auto space-y-6">
-      {/* Animated Eye-Catching Header Banner */}
-      <div className="relative overflow-hidden bg-neutral-900/90 border border-amber-500/30 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl group">
+    <div className="min-h-screen bg-[#07080a] text-white font-sans p-4 md:p-8 max-w-4xl mx-auto space-y-6">
+      
+      {/* Luxury Hotel Header Card */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#121318] via-[#0d0e12] to-[#08090c] border border-amber-500/30 rounded-3xl p-6 md:p-10 shadow-[0_0_50px_rgba(217,119,6,0.12)] backdrop-blur-2xl transition-all">
         
-        {/* Animated Moving Background Ambient Glow */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl animate-pulse pointer-events-none" />
-        
-        {/* Moving Light Shimmer Overlay Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/5 to-transparent -translate-x-full animate-[shimmer_4s_infinite]" />
+        {/* Glowing Metallic Gold Border Highlight */}
+        <div className="absolute inset-0 rounded-3xl border border-amber-400/20 pointer-events-none" />
 
-        <div className="relative z-10 space-y-3">
-          {/* Pulsing Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-amber-400">
-              DIGITAL SERVICE
-            </span>
+        {/* Ambient Moving Gold Wave Background */}
+        <div className="absolute -top-32 -right-32 w-80 h-80 bg-gradient-to-br from-amber-500/20 via-yellow-600/10 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-gradient-to-tr from-amber-600/15 via-amber-400/5 to-transparent rounded-full blur-3xl animate-pulse pointer-events-none" />
+
+        {/* Animated Shimmer Ray Effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-300/10 to-transparent -translate-x-full animate-[shimmer_5s_infinite]" />
+
+        <div className="relative z-10 space-y-4">
+          
+          {/* Hotel VIP Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 border border-amber-400/40 shadow-[0_0_20px_rgba(245,158,11,0.25)]">
+            <span className="text-[10px] tracking-widest text-amber-300 uppercase font-serif">✦ 5-STAR CONCIERGE ✦</span>
           </div>
 
-          {/* Heading with Moving Gradient Text Effect */}
-          <h1 className="text-2xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-500 bg-[length:200%_auto] animate-[gradient_6s_ease_infinite]">
-            Order directly from your phone
+          {/* Luxury Serif Title */}
+          <h1 className="text-3xl md:text-5xl font-serif tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-amber-300 to-amber-500 drop-shadow-sm">
+            In-Room & Dining Service
           </h1>
 
-          <p className="text-xs md:text-sm text-neutral-300 max-w-lg leading-relaxed">
-            Browse our menu, select your dishes or hotel services, and place your order straight to{" "}
-            <span className="text-amber-400 font-bold underline decoration-amber-500/50">
-              Table #{tableNum}
+          <p className="text-xs md:text-sm text-neutral-300 max-w-lg leading-relaxed font-light tracking-wide">
+            Select your gourmet dishes or suite amenities. Your request will be transmitted directly to kitchen & concierge service for{" "}
+            <span className="text-amber-300 font-semibold underline decoration-amber-400/40 underline-offset-4">
+              Table / Suite #{tableNum}
             </span>.
           </p>
+
+          {/* Elegant Divider Line */}
+          <div className="pt-2">
+            <div className="h-[1px] w-24 bg-gradient-to-r from-amber-400/60 to-transparent" />
+          </div>
         </div>
       </div>
 
       {/* Success Notification */}
       {orderSuccess && (
-        <div className="bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 p-4 rounded-2xl text-center text-xs font-bold animate-bounce shadow-lg">
-          ✓ Order sent to kitchen! Our staff is preparing it for Table #{tableNum}.
+        <div className="bg-amber-500/10 border border-amber-500/40 text-amber-300 p-4 rounded-2xl text-center text-xs font-serif tracking-widest uppercase animate-bounce shadow-xl">
+          ✦ Request Received. Our Concierge is preparing your order for Suite #{tableNum}.
         </div>
       )}
 
-      {/* Category Tabs */}
+      {/* Category Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-serif tracking-wider whitespace-nowrap transition-all ${
               selectedCategory === cat
-                ? "bg-amber-500 text-black shadow-lg shadow-amber-500/20 font-black"
-                : "bg-[#16181e] text-neutral-400 hover:text-white border border-neutral-800"
+                ? "bg-gradient-to-r from-amber-400 to-amber-600 text-black shadow-lg shadow-amber-500/20 font-bold"
+                : "bg-[#121318] text-neutral-400 hover:text-amber-300 border border-neutral-800/80"
             }`}
           >
             {cat}
@@ -174,45 +181,47 @@ function CustomerMenuContent() {
         ))}
       </div>
 
-      {/* Menu Grid */}
+      {/* Menu Item Grid */}
       {loading ? (
-        <div className="py-12 text-center text-xs text-neutral-500 font-bold uppercase tracking-wider">
-          Loading Menu...
+        <div className="py-12 text-center text-xs text-neutral-500 font-serif tracking-widest uppercase">
+          Preparing Menu Experience...
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="bg-[#16181e] border border-neutral-800 rounded-2xl p-8 text-center text-xs text-neutral-400">
-          No items found in this category.
+        <div className="bg-[#121318] border border-neutral-800 rounded-3xl p-10 text-center text-xs text-neutral-400 font-serif">
+          No items available in this section.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className="bg-[#16181e] border border-neutral-800 hover:border-amber-500/50 rounded-2xl p-4 flex gap-4 transition-all"
+              className="bg-[#121318] border border-neutral-800/80 hover:border-amber-500/40 rounded-3xl p-5 flex gap-4 transition-all shadow-lg hover:shadow-2xl hover:shadow-amber-500/5 group"
             >
               {item.image_url && (
                 <img
                   src={item.image_url}
                   alt={item.title || item.name}
-                  className="w-20 h-20 rounded-xl object-cover border border-neutral-800 shrink-0"
+                  className="w-22 h-22 rounded-2xl object-cover border border-neutral-800 shrink-0 group-hover:scale-105 transition-transform duration-300"
                 />
               )}
               <div className="flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-white">{item.title || item.name}</h3>
+                  <h3 className="text-sm font-serif font-semibold text-amber-100 group-hover:text-amber-300 transition-colors">
+                    {item.title || item.name}
+                  </h3>
                   {item.description && (
-                    <p className="text-[11px] text-neutral-400 line-clamp-2 mt-1">
+                    <p className="text-[11px] text-neutral-400 line-clamp-2 mt-1 font-light leading-relaxed">
                       {item.description}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs font-black text-amber-400">
+                  <span className="text-xs font-serif font-bold text-amber-400">
                     ₦{(item.price || 0).toLocaleString()}
                   </span>
                   <button
                     onClick={() => addToCart(item)}
-                    className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-black border border-amber-500/30 text-[11px] font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95"
+                    className="bg-amber-500/10 hover:bg-gradient-to-r hover:from-amber-400 hover:to-amber-500 text-amber-300 hover:text-black border border-amber-500/30 text-[10px] font-serif font-bold tracking-widest px-3.5 py-1.5 rounded-xl transition-all active:scale-95"
                   >
                     + ADD
                   </button>
@@ -223,14 +232,14 @@ function CustomerMenuContent() {
         </div>
       )}
 
-      {/* Floating Bottom Cart Bar */}
+      {/* Floating Bottom Order Bar */}
       {cart.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto bg-[#16181e]/95 border border-amber-500/40 p-4 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between gap-4 z-50">
+        <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto bg-[#121318]/95 border border-amber-500/40 p-4 rounded-3xl shadow-2xl backdrop-blur-xl flex items-center justify-between gap-4 z-50">
           <div>
-            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block">
-              Table #{tableNum} Order ({cart.reduce((a, b) => a + b.quantity, 0)} items)
+            <span className="text-[10px] font-serif tracking-widest text-amber-300/80 uppercase block">
+              Suite #{tableNum} Selection ({cart.reduce((a, b) => a + b.quantity, 0)})
             </span>
-            <span className="text-sm font-black text-amber-400">
+            <span className="text-sm font-serif font-bold text-amber-300">
               ₦{cartTotal.toLocaleString()}
             </span>
           </div>
@@ -238,9 +247,9 @@ function CustomerMenuContent() {
           <button
             onClick={handlePlaceOrder}
             disabled={isSubmitting}
-            className="bg-amber-500 hover:bg-amber-400 text-black font-black text-xs px-5 py-3 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
+            className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-serif font-bold text-xs px-6 py-3.5 rounded-2xl transition-all shadow-lg shadow-amber-500/20 active:scale-95 disabled:opacity-50 tracking-wider"
           >
-            {isSubmitting ? "SENDING..." : "CONFIRM ORDER 🚀"}
+            {isSubmitting ? "TRANSMITTING..." : "CONFIRM ORDER ✦"}
           </button>
         </div>
       )}
@@ -250,7 +259,7 @@ function CustomerMenuContent() {
 
 export default function CustomerMenuPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-neutral-500">Loading Menu...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-neutral-500 font-serif">Loading Concierge Menu...</div>}>
       <CustomerMenuContent />
     </Suspense>
   );
