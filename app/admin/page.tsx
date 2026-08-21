@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -11,11 +11,13 @@ const supabase = createClient(
 export default function AdminControlPanel() {
   const [activeTab, setActiveTab] = useState<"items" | "orders" | "qr">("items");
   const [items, setItems] = useState<any[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [store, setStore] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
 
   // Form state
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -25,9 +27,49 @@ export default function AdminControlPanel() {
   const [categoryId, setCategoryId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   useEffect(() => {
     fetchData();
+
+    // Supabase Realtime Subscription for New Orders
+    const channel = supabase
+      .channel("orders_channel")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "orders" },
+        (payload) => {
+          setOrders((prev) => [payload.new, ...prev]);
+          playOrderSound();
+          setNewOrderAlert(`🔔 NEW ORDER RECEIVED FOR TABLE ${payload.new.table_number || "1"}!`);
+          setTimeout(() => setNewOrderAlert(null), 6000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  const playOrderSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.5, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+      console.error("Audio playback error:", e);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -37,13 +79,15 @@ export default function AdminControlPanel() {
         setStore(storeList[0]);
         const sId = storeList[0].id;
 
-        const [itemRes, catRes] = await Promise.all([
+        const [itemRes, catRes, orderRes] = await Promise.all([
           supabase.from("menu_items").select("*").eq("store_id", sId),
-          supabase.from("categories").select("*").eq("store_id", sId)
+          supabase.from("categories").select("*").eq("store_id", sId),
+          supabase.from("orders").select("*").eq("store_id", sId).order("created_at", { ascending: false })
         ]);
 
         setItems(itemRes.data || []);
         setCategories(catRes.data || []);
+        setOrders(orderRes.data || []);
         if (catRes.data?.[0]) setCategoryId(catRes.data[0].id);
       }
     } catch (e) {
@@ -117,6 +161,13 @@ export default function AdminControlPanel() {
     <div className="min-h-screen bg-[#090A0C] text-white p-6 md:p-10 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
+        {/* Realtime Order Alarm Banner */}
+        {newOrderAlert && (
+          <div className="bg-amber-500 text-black font-black p-4 rounded-2xl text-center text-sm shadow-2xl animate-pulse">
+            {newOrderAlert}
+          </div>
+        )}
+
         {/* Top Navigation Bar */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
@@ -151,7 +202,7 @@ export default function AdminControlPanel() {
                 activeTab === "orders" ? "bg-amber-500 text-black" : "text-neutral-400 hover:text-white"
               }`}
             >
-              LIVE ORDERS
+              LIVE ORDERS ({orders.length})
             </button>
           </div>
         </div>
@@ -184,7 +235,6 @@ export default function AdminControlPanel() {
               </div>
             </div>
 
-            {/* Grid display */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredItems.map((item) => (
                 <div
@@ -198,9 +248,7 @@ export default function AdminControlPanel() {
                       className="w-12 h-12 rounded-xl object-cover border border-neutral-800 flex-shrink-0"
                     />
                     <div className="truncate">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
-                      </div>
+                      <h3 className="text-sm font-bold text-white truncate">{item.title}</h3>
                       <span className="text-[10px] bg-neutral-900 border border-neutral-800 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
                         {item.section || "Restaurant"}
                       </span>
@@ -230,12 +278,41 @@ export default function AdminControlPanel() {
           </div>
         )}
 
+        {/* Tab 2: Orders View with Live Alarm Display */}
         {activeTab === "orders" && (
-          <div className="bg-[#121418] p-8 rounded-2xl border border-neutral-800 text-center">
-            <p className="text-neutral-400 text-xs">Live orders display module connected to kitchen.</p>
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-300">
+              LIVE KITCHEN ORDERS ({orders.length})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {orders.map((order) => (
+                <div key={order.id} className="bg-[#121418] border border-amber-500/30 p-5 rounded-2xl space-y-3">
+                  <div className="flex justify-between items-center border-b border-neutral-800 pb-2">
+                    <span className="text-xs font-black text-amber-500">TABLE #{order.table_number || "1"}</span>
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold uppercase">
+                      {order.status || "Pending"}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    {Array.isArray(order.items) &&
+                      order.items.map((i: any, idx: number) => (
+                        <div key={idx} className="flex justify-between text-neutral-300">
+                          <span>{i.quantity}x {i.title} <span className="text-[10px] text-neutral-500">({i.section || "Restaurant"})</span></span>
+                          <span className="font-bold">{store?.currency || "₦"}{(i.price * i.quantity).toLocaleString()}</span>
+                        </div>
+                      ))}
+                  </div>
+                  <div className="pt-2 border-t border-neutral-800 flex justify-between items-center text-xs font-bold">
+                    <span>Total:</span>
+                    <span className="text-amber-500">{store?.currency || "₦"}{order.total_price?.toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
+        {/* Tab 3: QR Code Generator */}
         {activeTab === "qr" && (
           <div className="bg-[#121418] p-8 rounded-2xl border border-neutral-800 text-center max-w-sm mx-auto space-y-4">
             <h3 className="text-sm font-bold text-white">Table QR Code</h3>
@@ -267,10 +344,10 @@ export default function AdminControlPanel() {
               </div>
 
               <div>
-                <label className="text-neutral-400 mb-1 block">Section Route (Bar, Restaurant, Hotel)</label>
+                <label className="text-neutral-400 mb-1 block">Category Section (Bar, Restaurant, Hotel)</label>
                 <select value={section} onChange={(e) => setSection(e.target.value)} className="w-full bg-black border border-neutral-800 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
-                  <option value="Bar">Bar</option>
                   <option value="Restaurant">Restaurant</option>
+                  <option value="Bar">Bar</option>
                   <option value="Hotel">Hotel</option>
                 </select>
               </div>
