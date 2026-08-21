@@ -12,7 +12,6 @@ const supabase = createClient(
 interface MenuItem {
   id: string;
   title?: string;
-  name?: string;
   price: number;
   category: string;
   image_url?: string;
@@ -21,7 +20,6 @@ interface MenuItem {
 interface OrderItem {
   id: string;
   title?: string;
-  name?: string;
   price: number;
   quantity: number;
 }
@@ -142,7 +140,6 @@ export default function AdminDashboard() {
 
     const newItem = {
       title,
-      name: title,
       price: parseFloat(price),
       category,
       image_url: imageUrl || null,
@@ -265,7 +262,7 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* 12-Column Grid */}
+        {/* Grid Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Left Column (5 Cols) */}
@@ -331,7 +328,7 @@ export default function AdminDashboard() {
                               className="flex items-center justify-between text-xs py-1"
                             >
                               <span className="text-neutral-200 font-bold">
-                                {item.quantity}x {item.title || item.name}
+                                {item.quantity}x {item.title}
                               </span>
                               <span className="text-neutral-400 font-mono text-[11px]">
                                 ₦{((item.price || 0) * (item.quantity || 1)).toLocaleString()}
@@ -354,7 +351,7 @@ export default function AdminDashboard() {
               </div>
             </section>
 
-            {/* Add Item Form (Without Description Field) */}
+            {/* Add Item Form */}
             <section className="bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 shadow-2xl space-y-5">
               <div className="border-b border-neutral-800/60 pb-3">
                 <h2 className="text-xs font-black tracking-widest text-amber-500 uppercase">
@@ -434,7 +431,7 @@ export default function AdminDashboard() {
             </section>
           </div>
 
-          {/* Right Column (7 Cols) - Existing Items */}
+          {/* Right Column (7 Cols) */}
           <section className="lg:col-span-7 bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-neutral-800/60 pb-5">
               <div>
@@ -476,7 +473,7 @@ export default function AdminDashboard() {
                     {item.image_url ? (
                       <img
                         src={item.image_url}
-                        alt={item.title || item.name}
+                        alt={item.title}
                         className="w-16 h-16 rounded-2xl object-cover border border-neutral-800 shrink-0 group-hover:scale-105 transition-transform"
                       />
                     ) : (
@@ -487,7 +484,7 @@ export default function AdminDashboard() {
 
                     <div className="min-w-0 flex-1 space-y-1">
                       <h4 className="font-black text-sm text-white truncate group-hover:text-amber-400 transition-colors">
-                        {item.title || item.name}
+                        {item.title}
                       </h4>
                       <p className="font-black text-amber-400 text-sm pt-0.5">
                         ₦{(item.price || 0).toLocaleString()}
