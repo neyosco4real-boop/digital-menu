@@ -15,7 +15,6 @@ interface MenuItem {
   name?: string;
   price: number;
   category: string;
-  description?: string;
   image_url?: string;
 }
 
@@ -54,7 +53,6 @@ export default function AdminDashboard() {
   const [price, setPrice] = useState<string>("");
   const [category, setCategory] = useState<string>("Restaurant");
   const [imageUrl, setImageUrl] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
 
   const categories = ["Restaurant", "Bar", "Hotel"];
   const tables = Array.from({ length: 10 }, (_, i) => i + 1);
@@ -141,13 +139,13 @@ export default function AdminDashboard() {
     if (!title || !price) return alert("Please fill in title and price.");
 
     setIsSubmitting(true);
+
     const newItem = {
       title,
       name: title,
       price: parseFloat(price),
       category,
       image_url: imageUrl || null,
-      description: description || null,
     };
 
     const { data, error } = await supabase
@@ -162,7 +160,6 @@ export default function AdminDashboard() {
       setTitle("");
       setPrice("");
       setImageUrl("");
-      setDescription("");
       setCategory("Restaurant");
     }
     setIsSubmitting(false);
@@ -228,7 +225,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-[#030406] text-white p-4 md:p-8 font-sans selection:bg-amber-500 selection:text-black">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Top Header & Navigation */}
+        {/* Header */}
         <header className="relative overflow-hidden bg-gradient-to-r from-[#0d0f17] via-[#131622] to-[#0d0f17] p-6 md:p-8 rounded-3xl border border-neutral-800/80 shadow-2xl backdrop-blur-md">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
             <div>
@@ -268,13 +265,13 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* Main Interface Layout - 12 Column Grid */}
+        {/* 12-Column Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* LEFT SIDE: ORDERS & ADD ITEM FORM (5 COLUMNS) */}
+          {/* Left Column (5 Cols) */}
           <div className="lg:col-span-5 space-y-8">
             
-            {/* LIVE ORDERS SECTION */}
+            {/* Live Orders */}
             <section className="bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 shadow-2xl space-y-5">
               <div className="flex items-center justify-between border-b border-neutral-800/60 pb-4">
                 <div className="flex items-center gap-2.5">
@@ -357,7 +354,7 @@ export default function AdminDashboard() {
               </div>
             </section>
 
-            {/* ADD ITEM FORM */}
+            {/* Add Item Form (Without Description Field) */}
             <section className="bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 shadow-2xl space-y-5">
               <div className="border-b border-neutral-800/60 pb-3">
                 <h2 className="text-xs font-black tracking-widest text-amber-500 uppercase">
@@ -413,32 +410,17 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                      Image URL
-                    </label>
-                    <input
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full bg-[#12141e] border border-neutral-800 focus:border-amber-500/80 text-xs font-bold text-white px-4 py-3 rounded-2xl outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500/50"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                      Description
-                    </label>
-                    <input
-                      type="text"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Item details..."
-                      className="w-full bg-[#12141e] border border-neutral-800 focus:border-amber-500/80 text-xs font-bold text-white px-4 py-3 rounded-2xl outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500/50"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                    Image URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full bg-[#12141e] border border-neutral-800 focus:border-amber-500/80 text-xs font-bold text-white px-4 py-3 rounded-2xl outline-none transition-all placeholder:text-neutral-600 focus:ring-1 focus:ring-amber-500/50"
+                  />
                 </div>
 
                 <button
@@ -452,7 +434,7 @@ export default function AdminDashboard() {
             </section>
           </div>
 
-          {/* RIGHT SIDE: EXISTING MENU ITEMS WITH DELETE BUTTON */}
+          {/* Right Column (7 Cols) - Existing Items */}
           <section className="lg:col-span-7 bg-[#0b0c12] border border-neutral-800/80 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-neutral-800/60 pb-5">
               <div>
@@ -467,7 +449,6 @@ export default function AdminDashboard() {
                 </p>
               </div>
 
-              {/* Filter Switcher */}
               <div className="flex items-center gap-1.5 bg-[#12141e] p-1.5 rounded-2xl border border-neutral-800">
                 {["All", ...categories].map((cat) => (
                   <button
@@ -485,7 +466,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Item Grid Cards with Delete Controls */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[850px] overflow-y-auto pr-1.5">
               {filteredItems.map((item) => (
                 <div
@@ -509,11 +489,6 @@ export default function AdminDashboard() {
                       <h4 className="font-black text-sm text-white truncate group-hover:text-amber-400 transition-colors">
                         {item.title || item.name}
                       </h4>
-                      {item.description && (
-                        <p className="text-[11px] text-neutral-400 line-clamp-2 leading-relaxed">
-                          {item.description}
-                        </p>
-                      )}
                       <p className="font-black text-amber-400 text-sm pt-0.5">
                         ₦{(item.price || 0).toLocaleString()}
                       </p>
@@ -521,7 +496,6 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="flex items-center justify-between border-t border-neutral-800/60 pt-3 mt-1">
-                    {/* Inline Category Dropdown */}
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-black uppercase tracking-widest text-neutral-500">
                         Cat:
@@ -542,7 +516,6 @@ export default function AdminDashboard() {
                       </select>
                     </div>
 
-                    {/* ITEM DELETE BUTTON */}
                     <button
                       onClick={() => handleDeleteMenuItem(item.id)}
                       disabled={deletingId === item.id}
@@ -559,7 +532,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* DYNAMIC TABLE 1-10 QR CODE MODAL */}
+      {/* QR Code Modal */}
       {showQRModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0b0c12] border border-neutral-800 rounded-3xl p-6 md:p-8 max-w-lg w-full space-y-6 shadow-2xl relative">
