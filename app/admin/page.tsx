@@ -9,7 +9,7 @@ const supabase = createClient(
 );
 
 function AdminContent() {
-  const [activeTab, setActiveTab] = useState<"items" | "orders" | "qr">("items");
+  const [activeTab, setActiveTab] = useState<string>("items");
   const [selectedSection, setSelectedSection] = useState<string>("ALL");
   const [selectedTable, setSelectedTable] = useState<number>(1);
   const [items, setItems] = useState<any[]>([]);
@@ -159,7 +159,6 @@ function AdminContent() {
     return (
       <div className="min-h-screen bg-[#07080a] text-white p-6 font-sans flex items-center justify-center">
         <div className="bg-[#101216] p-8 rounded-2xl border border-neutral-800/90 text-center max-w-md w-full space-y-6 shadow-2xl relative">
-          
           <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
             <button
               onClick={() => setActiveTab("items")}
@@ -239,7 +238,6 @@ function AdminContent() {
               DOWNLOAD TABLE {selectedTable} QR CODE
             </a>
           </div>
-
         </div>
       </div>
     );
@@ -248,7 +246,6 @@ function AdminContent() {
   return (
     <div className="min-h-screen bg-[#07080a] text-white p-6 md:p-10 font-sans flex flex-col justify-center">
       <div className="max-w-7xl mx-auto w-full space-y-8">
-        
         {newOrderAlert && (
           <div className="bg-gradient-to-r from-amber-500 to-amber-400 text-black font-black p-4 rounded-2xl text-center text-xs tracking-wide shadow-2xl shadow-amber-500/20 animate-pulse flex items-center justify-center gap-2">
             <span>{newOrderAlert}</span>
@@ -435,7 +432,6 @@ function AdminContent() {
             </div>
           </div>
         )}
-
       </div>
 
       {isModalOpen && (
