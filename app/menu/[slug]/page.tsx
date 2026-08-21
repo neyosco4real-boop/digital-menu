@@ -32,6 +32,7 @@ export default function DynamicCustomerMenu() {
   const [submitting, setSubmitting] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     fetchMenu();
@@ -75,9 +76,17 @@ export default function DynamicCustomerMenu() {
   );
 
   const filteredItems = menuItems.filter((item) => {
-    if (selectedCategory === "All") return true;
-    const cat = (item.category || "").trim().toLowerCase();
-    return cat === selectedCategory.toLowerCase();
+    const matchesCategory =
+      selectedCategory === "All" ||
+      (item.category || "").trim().toLowerCase() === selectedCategory.toLowerCase();
+
+    const title = (item.title || item.name || "").toLowerCase();
+    const desc = (item.description || "").toLowerCase();
+    const matchesSearch =
+      title.includes(searchQuery.toLowerCase()) ||
+      desc.includes(searchQuery.toLowerCase());
+
+    return matchesCategory && matchesSearch;
   });
 
   const handlePlaceOrder = async () => {
@@ -149,21 +158,45 @@ export default function DynamicCustomerMenu() {
           </div>
         )}
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat.name}
-              onClick={() => setSelectedCategory(cat.name)}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap shrink-0 border flex items-center gap-2 ${
-                selectedCategory.toLowerCase() === cat.name.toLowerCase()
-                  ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
-                  : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
-              }`}
-            >
-              <span>{cat.icon}</span>
-              <span>{cat.name}</span>
-            </button>
-          ))}
+        {/* Properly Arranged Nav & Right-Side Search */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none shrink-0">
+            {categories.map((cat) => (
+              <button
+                key={cat.name}
+                onClick={() => setSelectedCategory(cat.name)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap border flex items-center gap-2 ${
+                  selectedCategory.toLowerCase() === cat.name.toLowerCase()
+                    ? "bg-amber-500 text-black border-amber-400 shadow-lg shadow-amber-500/20"
+                    : "bg-[#12141a] text-neutral-400 border-neutral-800 hover:text-white hover:border-neutral-700"
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="relative w-full md:w-64 shrink-0">
+            <input
+              type="text"
+              placeholder="Search menu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#12141a] border border-neutral-800 text-white placeholder-neutral-500 text-xs px-4 py-2.5 rounded-xl focus:outline-none focus:border-amber-500/50 transition-all pl-9"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">
+              🔍
+            </span>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
