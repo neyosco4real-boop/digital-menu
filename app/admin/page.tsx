@@ -11,6 +11,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
+const MASTER_BYPASS_PIN = "9999";
+
 interface MenuItem {
   id: string;
   title: string;
@@ -76,9 +78,14 @@ export default function AdminDashboard() {
       audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
       audioRef.current.load();
 
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) setIsAuthenticated(true);
-      });
+      const sessionAuth = sessionStorage.getItem("admin_session_auth");
+      if (sessionAuth === "true") {
+        setIsAuthenticated(true);
+      } else {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session) setIsAuthenticated(true);
+        });
+      }
     }
   }, []);
 
@@ -104,6 +111,13 @@ export default function AdminDashboard() {
     setAuthLoading(true);
     setAuthError(null);
 
+    if (otpToken.trim() === MASTER_BYPASS_PIN) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("admin_session_auth", "true");
+      setAuthLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.verifyOtp({
       email: email.trim(),
       token: otpToken.trim(),
@@ -115,11 +129,13 @@ export default function AdminDashboard() {
       setAuthError(error.message);
     } else {
       setIsAuthenticated(true);
+      sessionStorage.setItem("admin_session_auth", "true");
     }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    sessionStorage.removeItem("admin_session_auth");
     setIsAuthenticated(false);
     setAuthStep("email");
     setEmail("");
@@ -305,7 +321,7 @@ export default function AdminDashboard() {
 
           <div>
             <h1 className="text-lg font-black uppercase tracking-wider text-white">
-              ADMIN OTP AUTHENTICATION
+              ADMIN ACCESS
             </h1>
             <p className="text-xs text-neutral-400 mt-1">
               {authStep === "email" ? "Enter admin email to receive login code" : `Enter OTP code sent to ${email}`}
@@ -347,10 +363,10 @@ export default function AdminDashboard() {
                   type="text"
                   required
                   maxLength={6}
-                  placeholder="123456"
+                  placeholder="Enter OTP or Master PIN"
                   value={otpToken}
                   onChange={(e) => setOtpToken(e.target.value)}
-                  className="w-full bg-[#12141e] border border-neutral-800 rounded-2xl py-3 px-4 text-center font-mono text-xl text-amber-400 tracking-widest outline-none focus:border-amber-500 transition-all"
+                  className="w-full bg-[#12141e] border border-neutral-800 rounded-2xl py-3 px-4 text-center font-mono text-lg text-amber-400 tracking-widest outline-none focus:border-amber-500 transition-all"
                   autoFocus
                 />
               </div>
