@@ -37,17 +37,15 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  // Navigation & View State
   const [activeTab, setActiveTab] = useState<"orders" | "menu" | "qrcodes">("orders");
 
-  // Data States
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
+  const [baseUrl, setBaseUrl] = useState<string>("https://digital-menu-5rnq.vercel.app");
 
-  // Modal / Form States
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
@@ -61,7 +59,12 @@ export default function AdminDashboard() {
 
   const prevOrderCountRef = useRef<number>(0);
 
-  // Sound Alarm Chime using Web Audio API
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setBaseUrl(window.location.origin);
+    }
+  }, []);
+
   const playAlertSound = () => {
     try {
       const AudioCtx =
@@ -93,11 +96,10 @@ export default function AdminDashboard() {
       osc2.start(ctx.currentTime + 0.25);
       osc2.stop(ctx.currentTime + 0.8);
     } catch (e) {
-      console.error("Audio playback error:", e);
+      console.error("Audio error:", e);
     }
   };
 
-  // Fetch Dashboard Data
   const fetchAllData = async (manualRefresh = false) => {
     if (manualRefresh) setIsRefreshing(true);
 
@@ -131,7 +133,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchAllData();
 
-    // Realtime Supabase Subscription
     const channel = supabase
       .channel("realtime-admin-hub")
       .on(
@@ -149,7 +150,6 @@ export default function AdminDashboard() {
     };
   }, [soundEnabled]);
 
-  // Order Status Updates
   const updateOrderStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (!error) {
@@ -157,7 +157,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Menu Items CRUD
   const handleSaveMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
@@ -218,11 +217,8 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#030406] text-white font-sans selection:bg-amber-500/30 pb-20">
-      
-      {/* 5. Switch button & Top Header Control Bar */}
       <header className="sticky top-0 z-40 bg-[#0b0c12]/95 backdrop-blur-xl border-b border-neutral-800/90 px-4 md:px-8 py-4 shadow-2xl">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_10px_#f59e0b]" />
             <h1 className="text-xl font-black tracking-tight text-white">
@@ -231,8 +227,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap justify-center">
-            
-            {/* Switch to Customer Menu Button */}
             <Link
               href="/menu/1"
               target="_blank"
@@ -242,7 +236,6 @@ export default function AdminDashboard() {
               <span>View Customer Menu</span>
             </Link>
 
-            {/* Sound Notification Toggle */}
             <button
               onClick={toggleSound}
               className={`px-3.5 py-2 text-xs font-black uppercase rounded-xl border transition-all ${
@@ -254,7 +247,6 @@ export default function AdminDashboard() {
               {soundEnabled ? "🔔 Alarm ON" : "🔕 Sound Off"}
             </button>
 
-            {/* 6. & 8. Refresh Button */}
             <button
               onClick={() => fetchAllData(true)}
               disabled={isRefreshing}
@@ -267,7 +259,6 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {/* Navigation Sub-Tabs */}
       <div className="max-w-6xl mx-auto px-4 md:px-8 mt-6">
         <div className="flex items-center gap-3 border-b border-neutral-800 pb-3">
           <button
@@ -305,10 +296,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <main className="max-w-6xl mx-auto px-4 md:px-8 mt-6">
-        
-        {/* 7. LIVE ORDERS PANEL */}
         {activeTab === "orders" && (
           <div className="space-y-4">
             <h2 className="text-sm font-black uppercase tracking-widest text-amber-400">
@@ -395,7 +383,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* 1. HORIZONTAL MENU ITEMS GRID & 2. EDIT/DELETE & 3. ADD NEW ITEM */}
         {activeTab === "menu" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -403,7 +390,6 @@ export default function AdminDashboard() {
                 MENU ITEMS MANAGEMENT
               </h2>
 
-              {/* 3. Add new menu item Button */}
               <button
                 onClick={openAddModal}
                 className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)]"
@@ -412,7 +398,6 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* 1. Menu items displayed big and horizontal */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {menuItems.map((item) => (
                 <div
@@ -452,7 +437,6 @@ export default function AdminDashboard() {
                     </p>
                   </div>
 
-                  {/* 2. Menu_items edit/delete buttons on each item card */}
                   <div className="flex items-center gap-2 mt-5 pt-4 border-t border-neutral-800/80">
                     <button
                       onClick={() => openEditModal(item)}
@@ -473,7 +457,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* 4. DYNAMIC TABLE QR CODES (TABLE 1-10) */}
         {activeTab === "qrcodes" && (
           <div className="space-y-6">
             <h2 className="text-sm font-black uppercase tracking-widest text-amber-400">
@@ -483,9 +466,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
               {Array.from({ length: 10 }, (_, i) => i + 1).map((tableNum) => {
                 const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-                  typeof window !== "undefined"
-                    ? `${window.location.origin}/menu/${tableNum}`
-                    : `https://digital-menu-5rnq.vercel.app/menu/${tableNum}`
+                  `${baseUrl}/menu/${tableNum}`
                 )}&color=f59e0b&bgcolor=0b0c12`;
 
                 return (
@@ -516,10 +497,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-
       </main>
 
-      {/* 3. Add/Edit Item Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0b0c12] border border-amber-500/40 p-6 rounded-3xl max-w-md w-full shadow-2xl space-y-4">
@@ -616,7 +595,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
