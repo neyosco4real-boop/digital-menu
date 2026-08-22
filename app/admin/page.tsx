@@ -46,6 +46,7 @@ export default function AdminDashboard() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const [baseUrl, setBaseUrl] = useState<string>("https://digital-menu-5rnq.vercel.app");
   const [selectedTable, setSelectedTable] = useState<number>(1);
+  const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -59,6 +60,7 @@ export default function AdminDashboard() {
   });
 
   const prevOrderCountRef = useRef<number>(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -66,14 +68,25 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  const playAlertSound = () => {
-    try {
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
       const AudioCtx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof window.AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
+      if (AudioCtx) {
+        audioCtxRef.current = new AudioCtx();
+      }
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
 
-      const ctx = new AudioCtx();
+  const playAlertSound = () => {
+    try {
+      const ctx = getAudioContext();
+      if (!ctx) return;
 
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
@@ -97,8 +110,14 @@ export default function AdminDashboard() {
       osc2.start(ctx.currentTime + 0.25);
       osc2.stop(ctx.currentTime + 0.8);
     } catch (e) {
-      console.error("Audio error:", e);
+      console.error("Audio playback error:", e);
     }
+  };
+
+  const triggerOrderNotification = (tableNum: string) => {
+    setNewOrderAlert(`🔔 NEW ORDER RECEIVED FOR TABLE #${tableNum || "1"}!`);
+    if (soundEnabled) playAlertSound();
+    setTimeout(() => setNewOrderAlert(null), 8000);
   };
 
   const fetchAllData = async (manualRefresh = false) => {
@@ -111,7 +130,8 @@ export default function AdminDashboard() {
 
     if (!ordersRes.error && ordersRes.data) {
       if (prevOrderCountRef.current > 0 && ordersRes.data.length > prevOrderCountRef.current) {
-        if (soundEnabled) playAlertSound();
+        const latestOrder = ordersRes.data[0];
+        triggerOrderNotification(latestOrder?.table_number);
       }
       prevOrderCountRef.current = ordersRes.data.length;
       setOrders(ordersRes.data as Order[]);
@@ -128,7 +148,10 @@ export default function AdminDashboard() {
   const toggleSound = () => {
     const nextState = !soundEnabled;
     setSoundEnabled(nextState);
-    if (nextState) playAlertSound();
+    if (nextState) {
+      getAudioContext();
+      playAlertSound();
+    }
   };
 
   useEffect(() => {
@@ -140,8 +163,9 @@ export default function AdminDashboard() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "orders" },
         (payload) => {
-          setOrders((prev) => [payload.new as Order, ...prev]);
-          if (soundEnabled) playAlertSound();
+          const newOrd = payload.new as Order;
+          setOrders((prev) => [newOrd, ...prev]);
+          triggerOrderNotification(newOrd.table_number);
         }
       )
       .subscribe();
@@ -218,12 +242,41 @@ export default function AdminDashboard() {
     setEditingItem(null);
   };
 
+  const downloadQrCode = async (format: "png" | "svg") => {
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+      `${baseUrl}/menu/${selectedTable}`
+    )}&color=f59e0b&bgcolor=0b0c12&format=${format}`;
+
+    try {
+      const response = await fetch(qrApiUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = `table-${selectedTable}-qr.${format === "png" ? "jpg" : "svg"}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Download failed:", err);
+      window.open(qrApiUrl, "_blank");
+    }
+  };
+
   const currentQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
     `${baseUrl}/menu/${selectedTable}`
   )}&color=f59e0b&bgcolor=0b0c12`;
 
   return (
     <div className="min-h-screen bg-[#030406] text-white font-sans selection:bg-amber-500/30 pb-20">
+      {newOrderAlert && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-black px-4 py-3 font-black text-xs uppercase tracking-widest text-center shadow-2xl animate-bounce sticky top-0 z-50 border-b border-black">
+          {newOrderAlert}
+        </div>
+      )}
+
       <header className="sticky top-0 z-40 bg-[#0b0c12]/95 backdrop-blur-xl border-b border-neutral-800/90 px-4 md:px-8 py-4 shadow-2xl">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -471,11 +524,10 @@ export default function AdminDashboard() {
                 DYNAMIC TABLE QR CODE GENERATOR
               </h2>
               <p className="text-xs text-neutral-400 mt-1">
-                Select a table number below to display and scan its unique dynamic menu QR code.
+                Select a table number below to display and download its unique menu QR code.
               </p>
             </div>
 
-            {/* Table Selector Buttons (1 to 10) */}
             <div className="flex items-center justify-center flex-wrap gap-2">
               {Array.from({ length: 10 }, (_, i) => i + 1).map((tableNum) => (
                 <button
@@ -492,7 +544,6 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            {/* Single Dynamic QR Code Viewer */}
             <div className="bg-[#0b0c12]/95 border border-amber-500/30 p-8 rounded-3xl flex flex-col items-center shadow-2xl space-y-5">
               <span className="text-xs font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 px-4 py-1.5 rounded-xl border border-amber-500/20">
                 CURRENTLY VIEWING: TABLE #{selectedTable}
@@ -506,13 +557,27 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 flex-wrap justify-center pt-2">
+                <button
+                  onClick={() => downloadQrCode("png")}
+                  className="bg-amber-500 hover:bg-amber-400 text-black px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
+                >
+                  <span>⬇️ Download JPG</span>
+                </button>
+
+                <button
+                  onClick={() => downloadQrCode("svg")}
+                  className="bg-[#12141e] hover:bg-neutral-800 text-amber-400 border border-amber-500/30 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
+                >
+                  <span>⬇️ Download SVG</span>
+                </button>
+
                 <Link
                   href={`/menu/${selectedTable}`}
                   target="_blank"
-                  className="bg-[#12141e] hover:bg-neutral-800 text-amber-400 border border-amber-500/30 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
+                  className="bg-[#12141e] hover:bg-neutral-800 text-neutral-300 border border-neutral-800 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2"
                 >
-                  <span>🌐 Test Menu Link for Table #{selectedTable}</span>
+                  <span>🌐 Open Link</span>
                 </Link>
               </div>
             </div>
