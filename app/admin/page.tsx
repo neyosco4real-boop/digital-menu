@@ -37,7 +37,7 @@ interface Order {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"orders" | "menu" | "qrcodes">("orders");
+  const [activeTab, setActiveTab] = useState<"orders" | "menu" | "qrcodes">("menu");
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -50,6 +50,7 @@ export default function AdminDashboard() {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -168,6 +169,13 @@ export default function AdminDashboard() {
           triggerOrderNotification(newOrd.table_number);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "menu_items" },
+        () => {
+          fetchAllData();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -184,38 +192,40 @@ export default function AdminDashboard() {
 
   const handleSaveMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     const payload = {
-      title: formData.title,
+      title: formData.title.trim(),
       price: parseFloat(formData.price) || 0,
       category: formData.category,
-      image_url: formData.image_url.trim() ? formData.image_url : null,
-      description: formData.description.trim() ? formData.description : null,
+      image_url: formData.image_url.trim() ? formData.image_url.trim() : null,
+      description: formData.description.trim() ? formData.description.trim() : null,
     };
 
     if (editingItem) {
       const { error } = await supabase.from("menu_items").update(payload).eq("id", editingItem.id);
-      if (!error) {
-        setMenuItems((prev) =>
-          prev.map((item) =>
-            item.id === editingItem.id ? { ...item, ...payload } : item
-          )
-        );
+      if (error) {
+        alert(`Error updating item: ${error.message}`);
       }
     } else {
-      const { data, error } = await supabase.from("menu_items").insert([payload]).select("*");
-      if (!error && data && data.length > 0) {
-        setMenuItems((prev) => [data[0] as MenuItem, ...prev]);
+      const { error } = await supabase.from("menu_items").insert([payload]);
+      if (error) {
+        alert(`Error adding item to database: ${error.message}`);
       }
     }
 
+    await fetchAllData();
+    setIsSubmitting(false);
     closeModal();
   };
 
   const handleDeleteMenuItem = async (id: string) => {
     if (!confirm("Are you sure you want to delete this menu item?")) return;
     const { error } = await supabase.from("menu_items").delete().eq("id", id);
-    if (!error) {
-      setMenuItems((prev) => prev.filter((item) => item.id !== id));
+    if (error) {
+      alert(`Error deleting item: ${error.message}`);
+    } else {
+      fetchAllData();
     }
   };
 
@@ -320,10 +330,10 @@ export default function AdminDashboard() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 md:px-8 mt-6">
-        <div className="flex items-center gap-3 border-b border-neutral-800 pb-3">
+        <div className="flex items-center gap-3 border-b border-neutral-800 pb-3 overflow-x-auto">
           <button
             onClick={() => setActiveTab("orders")}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase transition-all ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap transition-all ${
               activeTab === "orders"
                 ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                 : "bg-[#0b0c12] text-neutral-400 border border-neutral-800 hover:text-white"
@@ -334,7 +344,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={() => setActiveTab("menu")}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase transition-all ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap transition-all ${
               activeTab === "menu"
                 ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                 : "bg-[#0b0c12] text-neutral-400 border border-neutral-800 hover:text-white"
@@ -345,7 +355,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={() => setActiveTab("qrcodes")}
-            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase transition-all ${
+            className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase whitespace-nowrap transition-all ${
               activeTab === "qrcodes"
                 ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.3)]"
                 : "bg-[#0b0c12] text-neutral-400 border border-neutral-800 hover:text-white"
@@ -445,20 +455,20 @@ export default function AdminDashboard() {
 
         {activeTab === "menu" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-sm font-black uppercase tracking-widest text-amber-400">
                 MENU ITEMS MANAGEMENT
               </h2>
 
               <button
                 onClick={openAddModal}
-                className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] w-full sm:w-auto"
               >
                 + Add New Item
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {menuItems.map((item) => (
                 <div
                   key={item.id}
@@ -586,49 +596,62 @@ export default function AdminDashboard() {
       </main>
 
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b0c12] border border-amber-500/40 p-6 rounded-3xl max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-lg font-black text-amber-400 uppercase">
-              {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
-            </h3>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#0b0c12] border border-amber-500/40 p-5 sm:p-6 rounded-3xl w-full max-w-lg shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <h3 className="text-base sm:text-lg font-black text-amber-400 uppercase tracking-wide">
+                {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
+              </h3>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="text-neutral-400 hover:text-white text-lg px-2"
+              >
+                ✕
+              </button>
+            </div>
 
-            <form onSubmit={handleSaveMenuItem} className="space-y-3">
-              <div>
-                <label className="text-[10px] font-black uppercase text-neutral-400 block mb-1">
-                  Item Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Lobster Thermidor"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none"
-                />
+            <form onSubmit={handleSaveMenuItem} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block mb-1">
+                    Item Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Lobster Thermidor"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block mb-1">
+                    Price (₦) *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="any"
+                    placeholder="e.g. 15000"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none transition-colors"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-neutral-400 block mb-1">
-                  Price (₦)
-                </label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 15000"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black uppercase text-neutral-400 block mb-1">
-                  Category
+                <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block mb-1">
+                  Category *
                 </label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none"
+                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none transition-colors"
                 >
                   <option value="Restaurant">Restaurant</option>
                   <option value="Bar">Bar</option>
@@ -637,44 +660,46 @@ export default function AdminDashboard() {
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-neutral-400 block mb-1">
-                  Image URL (Unsplash or Placeholder)
+                <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block mb-1">
+                  Image URL (Unsplash or direct image link)
                 </label>
                 <input
                   type="url"
                   placeholder="https://images.unsplash.com/..."
                   value={formData.image_url}
                   onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none"
+                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none transition-colors"
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase text-neutral-400 block mb-1">
+                <label className="text-[10px] font-black uppercase tracking-wider text-neutral-400 block mb-1">
                   Description
                 </label>
                 <textarea
-                  rows={2}
-                  placeholder="Brief description..."
+                  rows={3}
+                  placeholder="Brief description of ingredients or taste..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none"
+                  className="w-full bg-[#12141e] border border-neutral-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none transition-colors"
                 />
               </div>
 
-              <div className="flex items-center gap-3 pt-3">
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 bg-neutral-800 text-neutral-300 py-3 rounded-2xl text-xs font-black uppercase"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 py-3 rounded-2xl text-xs font-black uppercase transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-black py-3 rounded-2xl text-xs font-black uppercase shadow-lg"
+                  disabled={isSubmitting}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-black py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-lg disabled:opacity-50"
                 >
-                  Save Item
+                  {isSubmitting ? "Saving..." : editingItem ? "Update Item" : "Save & Publish"}
                 </button>
               </div>
             </form>
