@@ -154,8 +154,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCancelOrder = async (id: string) => {
-    if (!confirm("Are you sure you want to cancel this order?")) return;
+  const handleDeleteOrder = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this order?")) return;
     const { error } = await supabase.from("orders").delete().eq("id", id);
     if (!error) {
       setOrders((prev) => prev.filter((o) => o.id !== id));
@@ -299,7 +299,7 @@ export default function AdminDashboard() {
                 : "bg-[#0b0c12] text-neutral-400 border border-neutral-800"
             }`}
           >
-            📋 Live Orders ({orders.filter((o) => o.status !== "Completed").length})
+            📋 Live Orders ({orders.filter((o) => o.status !== "Completed" && o.status !== "Cancelled").length})
           </button>
 
           <button
@@ -328,7 +328,7 @@ export default function AdminDashboard() {
 
       <main className="max-w-6xl mx-auto px-4 md:px-8 mt-5">
         {activeTab === "orders" && (
-          <div className="space-y-3">
+          <div className="space-y-5">
             <h2 className="text-xs font-black uppercase tracking-widest text-amber-400">
               LIVE ORDERS PANEL
             </h2>
@@ -342,51 +342,81 @@ export default function AdminDashboard() {
                 No orders registered yet
               </div>
             ) : (
-              orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-[#0b0c12] border border-neutral-800 hover:border-amber-500/40 px-4 py-3 rounded-2xl shadow-lg transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg text-[11px] font-black uppercase shrink-0">
-                      Table #{order.table_number || "1"}
-                    </span>
-
-                    <div className="truncate text-xs text-neutral-200">
-                      {order.items?.map((item, idx) => (
-                        <span key={idx} className="mr-3 font-medium inline-block">
-                          <strong className="text-amber-400 font-bold mr-1">
-                            {item.quantity}x
-                          </strong>
-                          {item.title}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-[#0b0c12] border border-neutral-800 hover:border-amber-500/50 p-4 rounded-2xl flex flex-col justify-between shadow-xl transition-all"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase">
+                          Table #{order.table_number || "1"}
                         </span>
-                      ))}
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                          order.status === "Completed"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                            : order.status === "Cancelled"
+                            ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                            : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        }`}>
+                          {order.status || "Pending"}
+                        </span>
+                      </div>
+
+                      <div className="w-full h-24 rounded-xl bg-[#12141e] border border-neutral-800 flex items-center justify-center text-2xl mb-3">
+                        📋
+                      </div>
+
+                      <div className="space-y-1.5 mb-3 max-h-32 overflow-y-auto pr-1">
+                        {order.items?.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-xs">
+                            <span className="text-neutral-200 truncate">
+                              <strong className="text-amber-400 font-bold mr-1.5">
+                                {item.quantity}x
+                              </strong>
+                              {item.title}
+                            </span>
+                            <span className="text-neutral-400 font-mono text-[11px] shrink-0 ml-2">
+                              ₦{(item.price || 0).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="pt-2 border-t border-neutral-800/80 flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase text-neutral-400">Total</span>
+                        <span className="font-black text-amber-400 text-base font-mono">
+                          ₦{(order.total_price || 0).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
-                    <span className="font-black text-amber-400 text-base font-mono">
-                      ₦{(order.total_price || 0).toLocaleString()}
-                    </span>
-
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-neutral-800/80">
                       <button
-                        onClick={() => handleCancelOrder(order.id)}
-                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase transition-all"
+                        onClick={() => updateOrderStatus(order.id, "Cancelled")}
+                        className="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all"
                       >
                         Cancel
                       </button>
 
                       <button
+                        onClick={() => handleDeleteOrder(order.id)}
+                        className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all"
+                      >
+                        Delete
+                      </button>
+
+                      <button
                         onClick={() => updateOrderStatus(order.id, "Completed")}
-                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-[11px] font-black uppercase transition-all"
+                        className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all"
                       >
                         Complete
                       </button>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         )}
