@@ -17,6 +17,7 @@ interface MenuItem {
   price: number;
   category: string;
   image_url?: string;
+  description?: string;
 }
 
 interface CartItem extends MenuItem {
@@ -123,13 +124,13 @@ export default function CustomerMenu() {
   );
 
   return (
-    <div className="min-h-screen bg-[#030406] text-white font-sans pb-32 flex flex-col items-center relative overflow-hidden selection:bg-amber-500/30">
+    <div className="min-h-screen bg-[#030406] text-white font-sans pb-36 flex flex-col items-center relative overflow-hidden selection:bg-amber-500/30">
       
       {/* Background Luxury Ambient Glows */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-amber-600/10 blur-[130px] pointer-events-none rounded-full" />
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[350px] h-[350px] bg-amber-500/5 blur-[150px] pointer-events-none rounded-full" />
 
-      {/* Embedded CSS Animations for Orbit & Glowing Effects */}
+      {/* Embedded CSS Animations */}
       <style jsx global>{`
         @keyframes orbitSpin {
           0% { transform: rotate(0deg); }
@@ -178,9 +179,9 @@ export default function CustomerMenu() {
       </header>
 
       {/* Main Centered Container */}
-      <main className="w-full max-w-2xl px-4 md:px-6 mt-6 space-y-6 flex flex-col items-center relative z-10">
+      <main className="w-full max-w-xl px-4 md:px-6 mt-6 space-y-6 flex flex-col items-center relative z-10">
         
-        {/* Order Success Banner Notification */}
+        {/* Order Success Banner */}
         {orderPlaced && (
           <div className="w-full bg-emerald-950/90 border border-emerald-500/50 p-4 rounded-2xl text-center shadow-[0_0_30px_rgba(16,185,129,0.3)] animate-bounce">
             <p className="text-emerald-400 text-sm font-black tracking-wide">
@@ -192,15 +193,15 @@ export default function CustomerMenu() {
           </div>
         )}
 
-        {/* Sub-Header Card: Table Number & Refresh */}
-        <div className="w-full flex items-center justify-between bg-[#0b0c12]/90 backdrop-blur-xl border border-neutral-800/90 p-4 md:p-5 rounded-3xl shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-amber-400 to-amber-600" />
+        {/* Sub-Header Card */}
+        <div className="w-full flex items-center justify-between bg-[#0b0c12]/90 backdrop-blur-xl border border-neutral-800/90 p-5 rounded-3xl shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-amber-400 to-amber-600" />
           
           <div className="text-left pl-2">
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-xl border border-amber-500/20">
               TABLE / SUITE #{tableNumber}
             </span>
-            <h2 className="text-lg font-black tracking-tight text-white mt-2">
+            <h2 className="text-xl font-black tracking-tight text-white mt-2">
               OUR MENU
             </h2>
           </div>
@@ -208,7 +209,7 @@ export default function CustomerMenu() {
           <button
             onClick={() => fetchMenuItems(true)}
             disabled={isRefreshing}
-            className="flex items-center gap-2 bg-[#12141e] hover:bg-neutral-800 text-amber-400 hover:text-amber-300 border border-neutral-800 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 shadow-lg"
+            className="flex items-center gap-2 bg-[#12141e] hover:bg-neutral-800 text-amber-400 border border-neutral-800 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 shadow-lg"
           >
             <span className={`text-sm ${isRefreshing ? "animate-spin" : ""}`}>
               🔄
@@ -223,7 +224,7 @@ export default function CustomerMenu() {
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-2.5 rounded-2xl text-xs font-black uppercase transition-all duration-300 whitespace-nowrap ${
+              className={`px-6 py-2.5 rounded-2xl text-xs font-black uppercase transition-all duration-300 whitespace-nowrap ${
                 activeCategory.toLowerCase() === cat.toLowerCase()
                   ? "bg-gradient-to-r from-amber-500 to-amber-600 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)] scale-105"
                   : "bg-[#0b0c12]/80 text-neutral-400 border border-neutral-800/80 hover:text-white hover:border-neutral-700"
@@ -234,8 +235,8 @@ export default function CustomerMenu() {
           ))}
         </div>
 
-        {/* Menu Items List with Add to Order Actions */}
-        <div className="w-full space-y-3.5">
+        {/* Vertical Menu Items Line (Stacked Layout) */}
+        <div className="w-full space-y-5">
           {loading ? (
             <div className="text-center py-20 text-amber-500/70 text-xs font-black uppercase tracking-[0.2em] animate-pulse">
               Preparing Menu Experience...
@@ -251,47 +252,53 @@ export default function CustomerMenu() {
               return (
                 <div
                   key={item.id}
-                  className="w-full bg-[#0b0c12]/90 border border-neutral-800/80 hover:border-amber-500/50 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-xl transition-all duration-300 group"
+                  className="w-full bg-[#0b0c12]/95 border border-neutral-800/90 hover:border-amber-500/50 p-5 rounded-3xl flex items-center justify-between gap-5 shadow-2xl transition-all duration-300 group"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
+                  {/* Left Section: Larger Image & Info */}
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
                         alt={item.title}
-                        className="w-16 h-16 rounded-2xl object-cover border border-neutral-800 group-hover:border-amber-500/40 shrink-0 shadow-md transition-all duration-300"
+                        className="w-20 h-20 rounded-2xl object-cover border border-neutral-800 group-hover:border-amber-500/40 shrink-0 shadow-lg transition-all duration-300"
                       />
                     ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-[#12141e] border border-neutral-800 group-hover:border-amber-500/40 flex items-center justify-center text-2xl shrink-0 transition-all duration-300">
+                      <div className="w-20 h-20 rounded-2xl bg-[#12141e] border border-neutral-800 group-hover:border-amber-500/40 flex items-center justify-center text-3xl shrink-0 transition-all duration-300">
                         🍽️
                       </div>
                     )}
 
-                    <div className="min-w-0 text-left">
-                      <h3 className="font-bold text-sm text-white truncate group-hover:text-amber-200 transition-colors">
+                    <div className="min-w-0 text-left flex-1">
+                      <h3 className="font-bold text-base text-white truncate group-hover:text-amber-200 transition-colors">
                         {item.title}
                       </h3>
-                      <p className="font-black text-amber-400 text-sm mt-1">
+                      {item.description && (
+                        <p className="text-xs text-neutral-400 line-clamp-1 mt-0.5">
+                          {item.description}
+                        </p>
+                      )}
+                      <p className="font-black text-amber-400 text-base mt-1.5">
                         ₦{(item.price || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
 
-                  {/* Quantity Controller / Add Button */}
+                  {/* Right Section: Add Button / Quantity Controls */}
                   <div className="shrink-0">
                     {inCart ? (
-                      <div className="flex items-center bg-[#12141e] border border-amber-500/40 rounded-2xl p-1 gap-2 shadow-lg">
+                      <div className="flex items-center bg-[#12141e] border border-amber-500/40 rounded-2xl p-1.5 gap-3 shadow-lg">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="w-7 h-7 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-sm flex items-center justify-center transition-all active:scale-90"
+                          className="w-8 h-8 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base flex items-center justify-center transition-all active:scale-90"
                         >
                           -
                         </button>
-                        <span className="text-xs font-black text-white px-1">
+                        <span className="text-sm font-black text-white px-1">
                           {inCart.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="w-7 h-7 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-sm flex items-center justify-center transition-all active:scale-90"
+                          className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base flex items-center justify-center transition-all active:scale-90"
                         >
                           +
                         </button>
@@ -299,7 +306,7 @@ export default function CustomerMenu() {
                     ) : (
                       <button
                         onClick={() => addToCart(item)}
-                        className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3.5 py-2 rounded-2xl text-xs font-black tracking-wide uppercase transition-all duration-200 active:scale-95 shadow-md"
+                        className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-3 rounded-2xl text-xs font-black tracking-wider uppercase transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
                       >
                         + Add
                       </button>
@@ -316,13 +323,13 @@ export default function CustomerMenu() {
       {/* Floating Bottom Order Bar */}
       {cart.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-xl z-50 animate-in fade-in slide-in-from-bottom-6 duration-300">
-          <div className="bg-[#0b0c12]/95 backdrop-blur-2xl border border-amber-500/40 p-4 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-between gap-4">
+          <div className="bg-[#0b0c12]/95 backdrop-blur-2xl border border-amber-500/40 p-4 md:p-5 rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex items-center justify-between gap-4">
             
             <div className="text-left pl-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 block">
                 {cart.reduce((sum, item) => sum + item.quantity, 0)} Items Selected
               </span>
-              <p className="text-lg font-black text-amber-400 mt-0.5">
+              <p className="text-xl font-black text-amber-400 mt-0.5">
                 ₦{totalAmount.toLocaleString()}
               </p>
             </div>
@@ -330,7 +337,7 @@ export default function CustomerMenu() {
             <button
               onClick={handlePlaceOrder}
               disabled={isSubmitting}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-200 active:scale-95 disabled:opacity-50 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-200 active:scale-95 disabled:opacity-50 shadow-[0_0_20px_rgba(245,158,11,0.4)]"
             >
               {isSubmitting ? "Sending..." : "Place Order →"}
             </button>
