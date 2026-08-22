@@ -179,7 +179,7 @@ export default function CustomerMenu() {
       </header>
 
       {/* Main Centered Container */}
-      <main className="w-full max-w-xl px-4 md:px-6 mt-6 space-y-6 flex flex-col items-center relative z-10">
+      <main className="w-full max-w-4xl px-4 md:px-6 mt-6 space-y-6 flex flex-col items-center relative z-10">
         
         {/* Order Success Banner */}
         {orderPlaced && (
@@ -235,14 +235,14 @@ export default function CustomerMenu() {
           ))}
         </div>
 
-        {/* Vertical Menu Items Line (Stacked Layout) */}
-        <div className="w-full space-y-5">
+        {/* Horizontal Line Grid Layout */}
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
           {loading ? (
-            <div className="text-center py-20 text-amber-500/70 text-xs font-black uppercase tracking-[0.2em] animate-pulse">
+            <div className="col-span-full text-center py-20 text-amber-500/70 text-xs font-black uppercase tracking-[0.2em] animate-pulse">
               Preparing Menu Experience...
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="text-center py-20 bg-[#0b0c12]/80 border border-neutral-800 rounded-3xl text-neutral-500 text-xs font-bold uppercase tracking-widest">
+            <div className="col-span-full text-center py-20 bg-[#0b0c12]/80 border border-neutral-800 rounded-3xl text-neutral-500 text-xs font-bold uppercase tracking-widest">
               No items available in this category
             </div>
           ) : (
@@ -252,53 +252,53 @@ export default function CustomerMenu() {
               return (
                 <div
                   key={item.id}
-                  className="w-full bg-[#0b0c12]/95 border border-neutral-800/90 hover:border-amber-500/50 p-5 rounded-3xl flex items-center justify-between gap-5 shadow-2xl transition-all duration-300 group"
+                  className="w-full bg-[#0b0c12]/95 border border-neutral-800/90 hover:border-amber-500/50 p-5 rounded-3xl flex flex-col justify-between shadow-2xl transition-all duration-300 group h-full"
                 >
-                  {/* Left Section: Larger Image & Info */}
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                  {/* Top Image & Title Details */}
+                  <div className="flex flex-col items-center text-center">
                     {item.image_url ? (
                       <img
                         src={item.image_url}
                         alt={item.title}
-                        className="w-20 h-20 rounded-2xl object-cover border border-neutral-800 group-hover:border-amber-500/40 shrink-0 shadow-lg transition-all duration-300"
+                        className="w-full h-40 rounded-2xl object-cover border border-neutral-800 group-hover:border-amber-500/40 shadow-lg transition-all duration-300 mb-4"
                       />
                     ) : (
-                      <div className="w-20 h-20 rounded-2xl bg-[#12141e] border border-neutral-800 group-hover:border-amber-500/40 flex items-center justify-center text-3xl shrink-0 transition-all duration-300">
+                      <div className="w-full h-40 rounded-2xl bg-[#12141e] border border-neutral-800 group-hover:border-amber-500/40 flex items-center justify-center text-4xl shadow-lg transition-all duration-300 mb-4">
                         🍽️
                       </div>
                     )}
 
-                    <div className="min-w-0 text-left flex-1">
-                      <h3 className="font-bold text-base text-white truncate group-hover:text-amber-200 transition-colors">
-                        {item.title}
-                      </h3>
-                      {item.description && (
-                        <p className="text-xs text-neutral-400 line-clamp-1 mt-0.5">
-                          {item.description}
-                        </p>
-                      )}
-                      <p className="font-black text-amber-400 text-base mt-1.5">
-                        ₦{(item.price || 0).toLocaleString()}
+                    <h3 className="font-bold text-base text-white line-clamp-1 group-hover:text-amber-200 transition-colors w-full">
+                      {item.title}
+                    </h3>
+                    
+                    {item.description && (
+                      <p className="text-xs text-neutral-400 line-clamp-2 mt-1 min-h-[2rem]">
+                        {item.description}
                       </p>
-                    </div>
+                    )}
+
+                    <p className="font-black text-amber-400 text-lg mt-3">
+                      ₦{(item.price || 0).toLocaleString()}
+                    </p>
                   </div>
 
-                  {/* Right Section: Add Button / Quantity Controls */}
-                  <div className="shrink-0">
+                  {/* Bottom Action Controls */}
+                  <div className="w-full mt-5 pt-3 border-t border-neutral-800/60 flex items-center justify-center">
                     {inCart ? (
-                      <div className="flex items-center bg-[#12141e] border border-amber-500/40 rounded-2xl p-1.5 gap-3 shadow-lg">
+                      <div className="flex items-center justify-between w-full bg-[#12141e] border border-amber-500/40 rounded-2xl p-1.5 shadow-lg">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="w-8 h-8 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base flex items-center justify-center transition-all active:scale-90"
+                          className="w-9 h-9 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-amber-400 font-black text-base flex items-center justify-center transition-all active:scale-90"
                         >
                           -
                         </button>
-                        <span className="text-sm font-black text-white px-1">
+                        <span className="text-sm font-black text-white px-2">
                           {inCart.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="w-8 h-8 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base flex items-center justify-center transition-all active:scale-90"
+                          className="w-9 h-9 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-base flex items-center justify-center transition-all active:scale-90"
                         >
                           +
                         </button>
@@ -306,9 +306,9 @@ export default function CustomerMenu() {
                     ) : (
                       <button
                         onClick={() => addToCart(item)}
-                        className="bg-amber-500 hover:bg-amber-400 text-black px-5 py-3 rounded-2xl text-xs font-black tracking-wider uppercase transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
+                        className="w-full bg-amber-500 hover:bg-amber-400 text-black py-3 rounded-2xl text-xs font-black tracking-wider uppercase transition-all duration-200 active:scale-95 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
                       >
-                        + Add
+                        + Add to Order
                       </button>
                     )}
                   </div>
