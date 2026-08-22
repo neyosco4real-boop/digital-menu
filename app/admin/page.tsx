@@ -45,6 +45,7 @@ export default function AdminDashboard() {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(false);
   const [baseUrl, setBaseUrl] = useState<string>("https://digital-menu-5rnq.vercel.app");
+  const [selectedTable, setSelectedTable] = useState<number>(1);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
@@ -217,6 +218,10 @@ export default function AdminDashboard() {
     setEditingItem(null);
   };
 
+  const currentQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+    `${baseUrl}/menu/${selectedTable}`
+  )}&color=f59e0b&bgcolor=0b0c12`;
+
   return (
     <div className="min-h-screen bg-[#030406] text-white font-sans selection:bg-amber-500/30 pb-20">
       <header className="sticky top-0 z-40 bg-[#0b0c12]/95 backdrop-blur-xl border-b border-neutral-800/90 px-4 md:px-8 py-4 shadow-2xl">
@@ -293,7 +298,7 @@ export default function AdminDashboard() {
                 : "bg-[#0b0c12] text-neutral-400 border border-neutral-800 hover:text-white"
             }`}
           >
-            📱 Table QR Codes (1-10)
+            📱 Dynamic QR Code Generator
           </button>
         </div>
       </div>
@@ -460,42 +465,56 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "qrcodes" && (
-          <div className="space-y-6">
-            <h2 className="text-sm font-black uppercase tracking-widest text-amber-400">
-              DYNAMIC TABLE QR CODES (TABLES 1 TO 10)
-            </h2>
+          <div className="space-y-8 max-w-2xl mx-auto text-center">
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-widest text-amber-400">
+                DYNAMIC TABLE QR CODE GENERATOR
+              </h2>
+              <p className="text-xs text-neutral-400 mt-1">
+                Select a table number below to display and scan its unique dynamic menu QR code.
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((tableNum) => {
-                const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-                  `${baseUrl}/menu/${tableNum}`
-                )}&color=f59e0b&bgcolor=0b0c12`;
+            {/* Table Selector Buttons (1 to 10) */}
+            <div className="flex items-center justify-center flex-wrap gap-2">
+              {Array.from({ length: 10 }, (_, i) => i + 1).map((tableNum) => (
+                <button
+                  key={tableNum}
+                  onClick={() => setSelectedTable(tableNum)}
+                  className={`w-12 h-12 rounded-2xl text-xs font-black uppercase transition-all flex items-center justify-center border ${
+                    selectedTable === tableNum
+                      ? "bg-amber-500 text-black border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.4)] scale-105"
+                      : "bg-[#0b0c12] text-neutral-400 border-neutral-800 hover:border-amber-500/50 hover:text-white"
+                  }`}
+                >
+                  #{tableNum}
+                </button>
+              ))}
+            </div>
 
-                return (
-                  <div
-                    key={tableNum}
-                    className="bg-[#0b0c12]/95 border border-neutral-800 p-5 rounded-3xl flex flex-col items-center text-center shadow-xl hover:border-amber-500/40 transition-all"
-                  >
-                    <span className="text-xs font-black uppercase text-amber-400 bg-amber-500/10 px-3 py-1 rounded-xl border border-amber-500/20 mb-3">
-                      TABLE #{tableNum}
-                    </span>
+            {/* Single Dynamic QR Code Viewer */}
+            <div className="bg-[#0b0c12]/95 border border-amber-500/30 p-8 rounded-3xl flex flex-col items-center shadow-2xl space-y-5">
+              <span className="text-xs font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 px-4 py-1.5 rounded-xl border border-amber-500/20">
+                CURRENTLY VIEWING: TABLE #{selectedTable}
+              </span>
 
-                    <img
-                      src={qrUrl}
-                      alt={`Table ${tableNum} QR`}
-                      className="w-36 h-36 rounded-2xl border border-neutral-800 p-2 bg-[#030406]"
-                    />
+              <div className="p-4 bg-[#030406] rounded-3xl border border-neutral-800 shadow-inner">
+                <img
+                  src={currentQrUrl}
+                  alt={`Table ${selectedTable} QR`}
+                  className="w-56 h-56 rounded-2xl object-contain"
+                />
+              </div>
 
-                    <Link
-                      href={`/menu/${tableNum}`}
-                      target="_blank"
-                      className="mt-4 text-[10px] font-black uppercase text-neutral-400 hover:text-white underline"
-                    >
-                      Open Menu Link →
-                    </Link>
-                  </div>
-                );
-              })}
+              <div className="flex items-center gap-4">
+                <Link
+                  href={`/menu/${selectedTable}`}
+                  target="_blank"
+                  className="bg-[#12141e] hover:bg-neutral-800 text-amber-400 border border-amber-500/30 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
+                >
+                  <span>🌐 Test Menu Link for Table #{selectedTable}</span>
+                </Link>
+              </div>
             </div>
           </div>
         )}
