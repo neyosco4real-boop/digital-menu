@@ -11,6 +11,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
+const ADMIN_PIN = "1234"; // Set your preferred Admin PIN here
+
 interface MenuItem {
   id: string;
   title: string;
@@ -37,6 +39,10 @@ interface Order {
 }
 
 export default function AdminDashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [pinInput, setPinInput] = useState<string>("");
+  const [pinError, setPinError] = useState<boolean>(false);
+
   const [activeTab, setActiveTab] = useState<"orders" | "menu" | "qrcodes">("menu");
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -68,8 +74,31 @@ export default function AdminDashboard() {
       setBaseUrl(window.location.origin);
       audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
       audioRef.current.load();
+
+      const authStatus = sessionStorage.getItem("admin_authenticated");
+      if (authStatus === "true") {
+        setIsAuthenticated(true);
+      }
     }
   }, []);
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === ADMIN_PIN) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("admin_authenticated", "true");
+      setPinError(false);
+      setPinInput("");
+    } else {
+      setPinError(true);
+      setPinInput("");
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem("admin_authenticated");
+  };
 
   const playAlertSound = () => {
     if (audioRef.current) {
@@ -118,6 +147,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     fetchAllData();
 
     const channel = supabase
@@ -141,18 +172,13 @@ export default function AdminDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const updateOrderStatus = async (id: string, status: string) => {
-    // 1. Instantly reflect the status change in the UI
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
-
-    // 2. Push update to Supabase
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
-
     if (error) {
       console.error("Failed to update status in Supabase:", error.message);
-      // Fallback: reload state from server if update failed
       fetchAllData();
     }
   };
@@ -243,6 +269,53 @@ export default function AdminDashboard() {
     `${baseUrl}/menu/${selectedTable}`
   )}&color=f59e0b&bgcolor=0b0c12`;
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#030406] text-white font-sans flex items-center justify-center p-4">
+        <div className="bg-[#0b0c12] border border-amber-500/30 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl space-y-6">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-2xl mx-auto shadow-[0_0_20px_rgba(245,158,11,0.15)]">
+            🔒
+          </div>
+
+          <div>
+            <h1 className="text-lg font-black uppercase tracking-wider text-white">
+              ADMIN LOCK SCREEN
+            </h1>
+            <p className="text-xs text-neutral-400 mt-1">
+              Enter security PIN to access control panel
+            </p>
+          </div>
+
+          <form onSubmit={handlePinSubmit} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                maxLength={8}
+                placeholder="Enter PIN"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value)}
+                className="w-full bg-[#12141e] border border-neutral-800 rounded-2xl py-3 px-4 text-center font-mono text-xl text-amber-400 tracking-widest outline-none focus:border-amber-500 transition-all"
+                autoFocus
+              />
+              {pinError && (
+                <p className="text-rose-400 text-[11px] font-bold uppercase tracking-wider mt-2">
+                  ❌ Incorrect Security PIN
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs py-3.5 rounded-2xl tracking-widest shadow-lg transition-all"
+            >
+              Unlock Dashboard
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#030406] text-white font-sans selection:bg-amber-500/30 pb-20">
       {newOrderAlert && (
@@ -287,6 +360,13 @@ export default function AdminDashboard() {
               className="bg-amber-500 hover:bg-amber-400 text-black px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all"
             >
               {isRefreshing ? "Refreshing..." : "🔄 Refresh"}
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all"
+            >
+              🔒 Lock
             </button>
           </div>
         </div>
