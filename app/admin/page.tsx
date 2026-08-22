@@ -11,8 +11,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 );
 
-const ADMIN_PIN = "1234"; // Set your preferred Admin PIN here
-
 interface MenuItem {
   id: string;
   title: string;
@@ -40,8 +38,11 @@ interface Order {
 
 export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [pinInput, setPinInput] = useState<string>("");
-  const [pinError, setPinError] = useState<boolean>(false);
+  const [authStep, setAuthStep] = useState<"email" | "otp">("email");
+  const [email, setEmail] = useState<string>("");
+  const [otpToken, setOtpToken] = useState<string>("");
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"orders" | "menu" | "qrcodes">("menu");
 
@@ -75,29 +76,54 @@ export default function AdminDashboard() {
       audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
       audioRef.current.load();
 
-      const authStatus = sessionStorage.getItem("admin_authenticated");
-      if (authStatus === "true") {
-        setIsAuthenticated(true);
-      }
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setIsAuthenticated(true);
+      });
     }
   }, []);
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === ADMIN_PIN) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem("admin_authenticated", "true");
-      setPinError(false);
-      setPinInput("");
+    setAuthLoading(true);
+    setAuthError(null);
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+    });
+
+    setAuthLoading(false);
+    if (error) {
+      setAuthError(error.message);
     } else {
-      setPinError(true);
-      setPinInput("");
+      setAuthStep("otp");
     }
   };
 
-  const handleLogout = () => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: otpToken.trim(),
+      type: "email",
+    });
+
+    setAuthLoading(false);
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setIsAuthenticated(true);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setIsAuthenticated(false);
-    sessionStorage.removeItem("admin_authenticated");
+    setAuthStep("email");
+    setEmail("");
+    setOtpToken("");
   };
 
   const playAlertSound = () => {
@@ -274,43 +300,84 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-[#030406] text-white font-sans flex items-center justify-center p-4">
         <div className="bg-[#0b0c12] border border-amber-500/30 p-8 rounded-3xl max-w-sm w-full text-center shadow-2xl space-y-6">
           <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center text-2xl mx-auto shadow-[0_0_20px_rgba(245,158,11,0.15)]">
-            🔒
+            🔑
           </div>
 
           <div>
             <h1 className="text-lg font-black uppercase tracking-wider text-white">
-              ADMIN LOCK SCREEN
+              ADMIN OTP AUTHENTICATION
             </h1>
             <p className="text-xs text-neutral-400 mt-1">
-              Enter security PIN to access control panel
+              {authStep === "email" ? "Enter admin email to receive login code" : `Enter OTP code sent to ${email}`}
             </p>
           </div>
 
-          <form onSubmit={handlePinSubmit} className="space-y-4">
-            <div>
-              <input
-                type="password"
-                maxLength={8}
-                placeholder="Enter PIN"
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value)}
-                className="w-full bg-[#12141e] border border-neutral-800 rounded-2xl py-3 px-4 text-center font-mono text-xl text-amber-400 tracking-widest outline-none focus:border-amber-500 transition-all"
-                autoFocus
-              />
-              {pinError && (
-                <p className="text-rose-400 text-[11px] font-bold uppercase tracking-wider mt-2">
-                  ❌ Incorrect Security PIN
+          {authStep === "email" ? (
+            <form onSubmit={handleSendOtp} className="space-y-4">
+              <div>
+                <input
+                  type="email"
+                  required
+                  placeholder="admin@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#12141e] border border-neutral-800 rounded-2xl py-3 px-4 text-center font-sans text-sm text-amber-400 outline-none focus:border-amber-500 transition-all"
+                  autoFocus
+                />
+              </div>
+
+              {authError && (
+                <p className="text-rose-400 text-[11px] font-bold uppercase tracking-wider">
+                  ❌ {authError}
                 </p>
               )}
-            </div>
 
-            <button
-              type="submit"
-              className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs py-3.5 rounded-2xl tracking-widest shadow-lg transition-all"
-            >
-              Unlock Dashboard
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs py-3.5 rounded-2xl tracking-widest shadow-lg transition-all"
+              >
+                {authLoading ? "Sending Code..." : "Send OTP Code"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  placeholder="123456"
+                  value={otpToken}
+                  onChange={(e) => setOtpToken(e.target.value)}
+                  className="w-full bg-[#12141e] border border-neutral-800 rounded-2xl py-3 px-4 text-center font-mono text-xl text-amber-400 tracking-widest outline-none focus:border-amber-500 transition-all"
+                  autoFocus
+                />
+              </div>
+
+              {authError && (
+                <p className="text-rose-400 text-[11px] font-bold uppercase tracking-wider">
+                  ❌ {authError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs py-3.5 rounded-2xl tracking-widest shadow-lg transition-all"
+              >
+                {authLoading ? "Verifying..." : "Verify & Unlock"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAuthStep("email")}
+                className="text-[10px] text-neutral-400 underline uppercase tracking-wider hover:text-white"
+              >
+                ← Back to Email
+              </button>
+            </form>
+          )}
         </div>
       </div>
     );
@@ -366,7 +433,7 @@ export default function AdminDashboard() {
               onClick={handleLogout}
               className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-black uppercase transition-all"
             >
-              🔒 Lock
+              🔒 Logout
             </button>
           </div>
         </div>
