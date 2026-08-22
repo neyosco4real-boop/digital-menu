@@ -16,8 +16,8 @@ interface MenuItem {
   title: string;
   price: number;
   category: string;
-  image_url?: string;
-  description?: string;
+  image_url?: string | null;
+  description?: string | null;
 }
 
 interface CartItem {
@@ -113,11 +113,11 @@ export default function AdminDashboard() {
         if (soundEnabled) playAlertSound();
       }
       prevOrderCountRef.current = ordersRes.data.length;
-      setOrders(ordersRes.data);
+      setOrders(ordersRes.data as Order[]);
     }
 
     if (!menuRes.error && menuRes.data) {
-      setMenuItems(menuRes.data);
+      setMenuItems(menuRes.data as MenuItem[]);
     }
 
     setLoading(false);
@@ -163,21 +163,23 @@ export default function AdminDashboard() {
       title: formData.title,
       price: parseFloat(formData.price) || 0,
       category: formData.category,
-      image_url: formData.image_url || null,
-      description: formData.description,
+      image_url: formData.image_url.trim() ? formData.image_url : null,
+      description: formData.description.trim() ? formData.description : null,
     };
 
     if (editingItem) {
       const { error } = await supabase.from("menu_items").update(payload).eq("id", editingItem.id);
       if (!error) {
         setMenuItems((prev) =>
-          prev.map((item) => (item.id === editingItem.id ? { ...item, ...payload } : item))
+          prev.map((item) =>
+            item.id === editingItem.id ? { ...item, ...payload } : item
+          )
         );
       }
     } else {
       const { data, error } = await supabase.from("menu_items").insert([payload]).select("*");
-      if (!error && data) {
-        setMenuItems((prev) => [data[0], ...prev]);
+      if (!error && data && data.length > 0) {
+        setMenuItems((prev) => [data[0] as MenuItem, ...prev]);
       }
     }
 
